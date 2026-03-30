@@ -1,0 +1,17 @@
+{$DOMAIN:localhost:80}
+
+# SPA routing: serve index.html for all non-file routes
+handle {
+	root * /srv
+
+	# Reverse proxy API requests to backend
+	handle /api/* {
+		reverse_proxy {$BACKEND_URL:http://backend:8888}
+	}
+
+	# Serve static files, fall back to index.html for SPA routing
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}

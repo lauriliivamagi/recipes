@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Testing
+playwright-report/
+test-results/
+
+# Logs
+lerna-debug.log
+*.log
+
+# Output artifacts
+output/*.tmp
+
+# Ralph temporary files
+*.tmp
+ralph-*.log
+
+# Teammate scratchpads (ephemeral)
+state/work/
+
+# Database files
+data/
+
+# Docker
+.dev-logs/
+
+.firecrawl
+.playwright-mcp
