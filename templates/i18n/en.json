@@ -39,6 +39,9 @@
     "noResults": "No recipes found",
     "allRecipes": "All Recipes",
     "timerDone": "Timer done!",
-    "remaining": "remaining"
+    "remaining": "remaining",
+    "startTimer": "Start timer",
+    "tapToCancel": "tap to cancel",
+    "screenOn": "Screen on"
   }
 }

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="76" fill="#1a1a2e"/>
+  <!-- Pot body -->
+  <ellipse cx="256" cy="320" rx="140" ry="100" fill="#f4a261"/>
+  <!-- Pot rim -->
+  <rect x="116" y="260" width="280" height="24" rx="12" fill="#4ecdc4"/>
+  <!-- Pot handles -->
+  <rect x="80" y="260" width="44" height="24" rx="12" fill="#4ecdc4"/>
+  <rect x="388" y="260" width="44" height="24" rx="12" fill="#4ecdc4"/>
+  <!-- Steam lines -->
+  <path d="M200 220 Q195 190 205 160" stroke="#e0e0e0" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.7"/>
+  <path d="M256 210 Q251 175 261 140" stroke="#e0e0e0" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.7"/>
+  <path d="M312 220 Q307 190 317 160" stroke="#e0e0e0" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.7"/>
+</svg>

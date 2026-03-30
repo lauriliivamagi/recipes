@@ -39,6 +39,9 @@
     "noResults": "Retsepte ei leitud",
     "allRecipes": "Kõik retseptid",
     "timerDone": "Taimer lõppes!",
-    "remaining": "jäänud"
+    "remaining": "jäänud",
+    "startTimer": "Käivita taimer",
+    "tapToCancel": "puuduta tühistamiseks",
+    "screenOn": "Ekraan sees"
   }
 }

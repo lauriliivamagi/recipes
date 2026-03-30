@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a1a2e">
+<link rel="manifest" href="{{MANIFEST_PATH}}">
+<link rel="apple-touch-icon" href="{{ICON_PATH}}">
 <title>Recipe</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -609,6 +612,31 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* === WAKE LOCK INDICATOR === */
+.wake-lock-indicator {
+  position: fixed;
+  top: 8px;
+  right: 12px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  opacity: 0.6;
+  z-index: 50;
+  pointer-events: none;
+}
+
+/* === SCREEN-READER ONLY === */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* === RESPONSIVE === */
 
 /* Tablet */
@@ -645,19 +673,21 @@ body {
 <div class="servings-adjuster" id="servingsAdjuster"></div>
 
 <!-- View tabs -->
-<div class="view-tabs" id="viewTabs"></div>
+<div class="view-tabs" id="viewTabs" role="tablist" aria-label="View"></div>
 
 <!-- Overview View -->
-<section class="view active" id="overviewView">
+<section class="view active" id="overviewView" role="tabpanel" aria-labelledby="tab-overview">
   <div class="mode-toggle" id="modeToggle"></div>
   <div class="equipment-summary" id="equipmentSummary"></div>
   <div class="phase-list" id="phaseList"></div>
 </section>
 
 <!-- Cooking View -->
-<section class="view cooking-view" id="cookingView">
-  <div class="awareness-bar" id="awarenessBar"></div>
-  <div id="focusArea"></div>
+<div class="wake-lock-indicator" id="wakeLockIndicator" style="display:none" aria-hidden="true"></div>
+
+<section class="view cooking-view" id="cookingView" role="tabpanel" aria-labelledby="tab-cooking">
+  <div class="awareness-bar" id="awarenessBar" role="status" aria-live="polite"></div>
+  <div id="focusArea" aria-live="polite" aria-atomic="false"></div>
   <div class="nav-buttons" id="navButtons"></div>
 </section>
 
@@ -800,6 +830,34 @@ function playTimerAlarm() {
     });
     setTimeout(function() { ctx.close(); }, 2000);
   } catch (e) { /* Web Audio not available */ }
+}
+
+/* ===================================================================
+   WAKE LOCK: keep screen on during cooking mode
+   =================================================================== */
+var wakeLockSentinel = null;
+
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    wakeLockSentinel = await navigator.wakeLock.request('screen');
+    wakeLockSentinel.addEventListener('release', function() {
+      wakeLockSentinel = null;
+      var ind = $('#wakeLockIndicator');
+      if (ind) ind.style.display = 'none';
+    });
+    var ind = $('#wakeLockIndicator');
+    if (ind) { ind.textContent = I18N.labels.screenOn; ind.style.display = 'block'; }
+  } catch (e) { /* Wake lock request failed — low battery, background tab, etc. */ }
+}
+
+function releaseWakeLock() {
+  if (wakeLockSentinel) {
+    wakeLockSentinel.release();
+    wakeLockSentinel = null;
+  }
+  var ind = $('#wakeLockIndicator');
+  if (ind) ind.style.display = 'none';
 }
 
 /* ===================================================================
@@ -1354,12 +1412,20 @@ function renderViewTabs(currentView) {
   var overviewBtn = document.createElement('button');
   overviewBtn.className = 'view-tab' + (currentView === 'overview' ? ' active' : '');
   overviewBtn.textContent = I18N.nav.overview;
+  overviewBtn.id = 'tab-overview';
+  overviewBtn.setAttribute('role', 'tab');
+  overviewBtn.setAttribute('aria-selected', currentView === 'overview' ? 'true' : 'false');
+  overviewBtn.setAttribute('aria-controls', 'overviewView');
   overviewBtn.addEventListener('click', function() { actor.send({ type: 'SWITCH_VIEW', view: 'overview' }); });
   container.appendChild(overviewBtn);
 
   var cookingBtn = document.createElement('button');
   cookingBtn.className = 'view-tab' + (currentView === 'cooking' ? ' active' : '');
   cookingBtn.textContent = I18N.nav.cooking;
+  cookingBtn.id = 'tab-cooking';
+  cookingBtn.setAttribute('role', 'tab');
+  cookingBtn.setAttribute('aria-selected', currentView === 'cooking' ? 'true' : 'false');
+  cookingBtn.setAttribute('aria-controls', 'cookingView');
   cookingBtn.addEventListener('click', function() { actor.send({ type: 'SWITCH_VIEW', view: 'cooking' }); });
   container.appendChild(cookingBtn);
 }
@@ -1375,6 +1441,8 @@ function toggleViewVisibility(currentView) {
 function renderModeToggle(ctx) {
   var container = $('#modeToggle');
   container.textContent = '';
+  container.setAttribute('role', 'radiogroup');
+  container.setAttribute('aria-label', I18N.toggle.relaxed + ' / ' + I18N.toggle.optimized);
 
   var relaxedTime = RECIPE.meta.totalTime ? RECIPE.meta.totalTime.relaxed : '?';
   var optimizedTime = RECIPE.meta.totalTime ? RECIPE.meta.totalTime.optimized : '?';
@@ -1382,12 +1450,16 @@ function renderModeToggle(ctx) {
   var relaxedBtn = document.createElement('button');
   relaxedBtn.className = 'mode-btn' + (ctx.mode === 'relaxed' ? ' active' : '');
   relaxedBtn.textContent = '\uD83D\uDE0C ' + I18N.toggle.relaxed + ' ' + relaxedTime + ' ' + I18N.labels.minutes;
+  relaxedBtn.setAttribute('role', 'radio');
+  relaxedBtn.setAttribute('aria-checked', ctx.mode === 'relaxed' ? 'true' : 'false');
   relaxedBtn.addEventListener('click', function() { actor.send({ type: 'SET_MODE', mode: 'relaxed' }); });
   container.appendChild(relaxedBtn);
 
   var optimizedBtn = document.createElement('button');
   optimizedBtn.className = 'mode-btn' + (ctx.mode === 'optimized' ? ' active' : '');
   optimizedBtn.textContent = '\u26A1 ' + I18N.toggle.optimized + ' ' + optimizedTime + ' ' + I18N.labels.minutes;
+  optimizedBtn.setAttribute('role', 'radio');
+  optimizedBtn.setAttribute('aria-checked', ctx.mode === 'optimized' ? 'true' : 'false');
   optimizedBtn.addEventListener('click', function() { actor.send({ type: 'SET_MODE', mode: 'optimized' }); });
   container.appendChild(optimizedBtn);
 }
@@ -1663,7 +1735,7 @@ function buildFocusCard(op, stepIdx, totalSteps, ctx, scaleFactor) {
     card.appendChild(spLabel);
   }
 
-  var action = document.createElement('div');
+  var action = document.createElement('h2');
   action.className = 'focus-action';
   action.textContent = capitalize(op.action || '');
   card.appendChild(action);
@@ -1714,10 +1786,12 @@ function buildFocusCard(op, stepIdx, totalSteps, ctx, scaleFactor) {
     if (timerState && !timerState.done) {
       btn.className = 'timer-btn running';
       btn.textContent = '\u23F2 ' + formatTimerDisplay(timerState.remaining) + ' \u2014 tap to cancel';
+      btn.setAttribute('aria-label', formatTimerDisplay(timerState.remaining) + ' ' + I18N.labels.remaining + ', ' + I18N.labels.tapToCancel);
       btn.addEventListener('click', function() { actor.send({ type: 'CANCEL_TIMER', opId: opId }); });
     } else {
       btn.className = 'timer-btn';
       btn.textContent = '\u23F2 Start ' + formatMinutes(time) + ' timer';
+      btn.setAttribute('aria-label', I18N.labels.startTimer + ' ' + formatMinutes(time));
       btn.addEventListener('click', function() { actor.send({ type: 'START_TIMER', opId: opId, minutes: time }); });
     }
     timerDiv.appendChild(btn);
@@ -1788,13 +1862,16 @@ function buildContextBanner(op, ctx, scaleFactor) {
     if (timerState && !timerState.done) {
       btn.className = 'context-timer-btn running';
       btn.textContent = '\u23F2 ' + formatTimerDisplay(timerState.remaining);
+      btn.setAttribute('aria-label', formatTimerDisplay(timerState.remaining) + ' ' + I18N.labels.remaining + ', ' + I18N.labels.tapToCancel);
       btn.addEventListener('click', function() { actor.send({ type: 'CANCEL_TIMER', opId: opId }); });
     } else if (timerState && timerState.done) {
       btn.className = 'context-timer-btn';
       btn.textContent = '\u2705 ' + (I18N.labels.timerDone || 'Done');
+      btn.setAttribute('aria-label', I18N.labels.timerDone);
     } else {
       btn.className = 'context-timer-btn';
       btn.textContent = '\u23F2 ' + (I18N.labels.startTimer || 'Start timer');
+      btn.setAttribute('aria-label', I18N.labels.startTimer + ' ' + formatMinutes(time));
       btn.addEventListener('click', function() { actor.send({ type: 'START_TIMER', opId: opId, minutes: time }); });
     }
     banner.appendChild(btn);
@@ -1812,6 +1889,7 @@ function renderNavButtons(ctx) {
   backBtn.className = 'nav-btn nav-btn-back';
   backBtn.textContent = '\u2190 ' + I18N.nav.back;
   backBtn.disabled = ctx.currentStep <= 0;
+  backBtn.setAttribute('aria-label', I18N.nav.back + ' \u2014 ' + I18N.labels.step + ' ' + ctx.currentStep);
   backBtn.addEventListener('click', function() { actor.send({ type: 'PREV_STEP' }); });
   nav.appendChild(backBtn);
 
@@ -1819,6 +1897,7 @@ function renderNavButtons(ctx) {
   nextBtn.className = 'nav-btn nav-btn-next';
   nextBtn.textContent = I18N.nav.next + ' \u2192';
   nextBtn.disabled = ctx.currentStep >= totalSteps - 1;
+  nextBtn.setAttribute('aria-label', I18N.nav.next + ' \u2014 ' + I18N.labels.step + ' ' + (ctx.currentStep + 2));
   nextBtn.addEventListener('click', function() { actor.send({ type: 'NEXT_STEP' }); });
   nav.appendChild(nextBtn);
 }
@@ -1957,12 +2036,14 @@ actor.subscribe((snapshot) => {
       renderEquipment();
       renderPhases(ctx);
       $('#navButtons').style.display = 'none';
+      releaseWakeLock();
     }
     if (currView === 'cooking') {
       renderFocusArea(ctx);
       renderAwareness(ctx);
       renderNavButtons(ctx);
       $('#navButtons').style.display = 'flex';
+      requestWakeLock();
     }
   }
 
@@ -2011,6 +2092,18 @@ actor.subscribe((snapshot) => {
   }
 
   prev = curr;
+});
+
+/* ===================================================================
+   VISIBILITY CHANGE: re-acquire wake lock when tab regains focus
+   =================================================================== */
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible') {
+    var snapshot = actor.getSnapshot();
+    if (snapshot.value.view === 'cooking') {
+      requestWakeLock();
+    }
+  }
 });
 
 /* ===================================================================
@@ -2104,6 +2197,11 @@ if (initialView === 'overview') {
   renderAwareness(initial.context);
   renderNavButtons(initial.context);
   $('#navButtons').style.display = 'flex';
+}
+
+// Service Worker registration
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('{{SW_PATH}}');
 }
 </script>
 </body>
