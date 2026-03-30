@@ -1,0 +1,44 @@
+{
+  "nav": {
+    "next": "Järgmine",
+    "back": "Tagasi",
+    "overview": "Ülevaade",
+    "cooking": "Alusta küpsetamist"
+  },
+  "phases": {
+    "prep": "Ettevalmistus",
+    "cook": "Küpsetamine",
+    "simmer": "Hautamine",
+    "finish": "Lõpetamine",
+    "build": "Koostamine"
+  },
+  "toggle": {
+    "relaxed": "Rahulik",
+    "optimized": "Optimeeritud"
+  },
+  "labels": {
+    "equipment": "Vajalikud töövahendid",
+    "servings": "Portsjonid",
+    "totalTime": "Koguaeg",
+    "minutes": "min",
+    "step": "Samm",
+    "of": "/",
+    "next": "Järgmine",
+    "meanwhile": "Samal ajal",
+    "useThisTimeFor": "Kasuta seda aega",
+    "afterBothComplete": "Pärast mõlema lõpetamist",
+    "passive": "Passiivne",
+    "active": "Aktiivne",
+    "doThisNow": "Tee seda nüüd",
+    "whileWaiting": "Ootamise ajal",
+    "tapToExpand": "Puuduta laiendamiseks",
+    "difficulty": "Raskusaste",
+    "source": "Allikas",
+    "tags": "Sildid",
+    "searchPlaceholder": "Otsi retsepte...",
+    "noResults": "Retsepte ei leitud",
+    "allRecipes": "Kõik retseptid",
+    "timerDone": "Taimer lõppes!",
+    "remaining": "jäänud"
+  }
+}

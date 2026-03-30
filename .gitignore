@@ -1,9 +1,8 @@
 # Dependencies
 node_modules/
 
-# Build output
-dist/
-*.tsbuildinfo
+# Generated output (deploy separately or use gh-pages branch)
+site/
 
 # Environment
 .env
@@ -19,33 +18,11 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Coverage
-coverage/
-.nyc_output/
-
-# Testing
-playwright-report/
-test-results/
-
 # Logs
-lerna-debug.log
 *.log
 
-# Output artifacts
-output/*.tmp
+# Superpowers brainstorm sessions
+.superpowers/
 
-# Ralph temporary files
+# Temporary files
 *.tmp
-ralph-*.log
-
-# Teammate scratchpads (ephemeral)
-state/work/
-
-# Database files
-data/
-
-# Docker
-.dev-logs/
-
-.firecrawl
-.playwright-mcp

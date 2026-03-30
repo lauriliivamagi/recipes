@@ -1,0 +1,44 @@
+{
+  "nav": {
+    "next": "Next",
+    "back": "Back",
+    "overview": "Overview",
+    "cooking": "Start Cooking"
+  },
+  "phases": {
+    "prep": "Prep",
+    "cook": "Cook",
+    "simmer": "Simmer",
+    "finish": "Finish",
+    "build": "Build"
+  },
+  "toggle": {
+    "relaxed": "Relaxed",
+    "optimized": "Optimized"
+  },
+  "labels": {
+    "equipment": "Equipment needed",
+    "servings": "Servings",
+    "totalTime": "Total time",
+    "minutes": "min",
+    "step": "Step",
+    "of": "of",
+    "next": "Next",
+    "meanwhile": "Meanwhile",
+    "useThisTimeFor": "Use this time for",
+    "afterBothComplete": "After both complete",
+    "passive": "Passive",
+    "active": "Active",
+    "doThisNow": "Do this now",
+    "whileWaiting": "While waiting",
+    "tapToExpand": "Tap to expand",
+    "difficulty": "Difficulty",
+    "source": "Source",
+    "tags": "Tags",
+    "searchPlaceholder": "Search recipes...",
+    "noResults": "No recipes found",
+    "allRecipes": "All Recipes",
+    "timerDone": "Timer done!",
+    "remaining": "remaining"
+  }
+}

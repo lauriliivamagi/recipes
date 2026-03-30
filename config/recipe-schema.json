@@ -1,0 +1,272 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/task-18-recipe/config/recipe-schema.json",
+  "title": "Recipe",
+  "description": "Structured recipe data model for the Recipe Visualization App",
+  "type": "object",
+  "required": ["meta", "ingredients", "equipment", "operations", "subProducts", "finishSteps"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["title", "slug", "language", "originalText", "tags", "servings", "totalTime", "difficulty"],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable recipe title"
+        },
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "description": "URL-safe identifier, matches the filename without .json"
+        },
+        "language": {
+          "type": "string",
+          "pattern": "^[a-z]{2}$",
+          "description": "ISO 639-1 two-letter language code"
+        },
+        "source": {
+          "type": "string",
+          "pattern": "^https?://",
+          "description": "Optional URL of the original recipe"
+        },
+        "originalText": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Full original recipe text in markdown for side-by-side review"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true,
+          "description": "Categorization tags for filtering and search"
+        },
+        "servings": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Number of servings the recipe yields"
+        },
+        "totalTime": {
+          "type": "object",
+          "required": ["relaxed", "optimized"],
+          "additionalProperties": false,
+          "properties": {
+            "relaxed": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Total time in minutes with all prep front-loaded (relaxed mode)"
+            },
+            "optimized": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Total time in minutes with prep distributed into idle windows (optimized mode)"
+            }
+          }
+        },
+        "difficulty": {
+          "type": "string",
+          "enum": ["easy", "medium", "hard"],
+          "description": "Recipe difficulty level"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional free-form notes about the recipe"
+        }
+      }
+    },
+    "ingredients": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "quantity", "unit", "group"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "description": "Unique identifier for this ingredient, referenced by operations"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable ingredient name"
+          },
+          "quantity": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Amount in the specified unit"
+          },
+          "unit": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unit of measurement (metric preferred: g, ml, whole, cloves, etc.)"
+          },
+          "group": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Category for shopping list aggregation (e.g., vegetables, meat, dairy)"
+          }
+        }
+      }
+    },
+    "equipment": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "count"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "description": "Unique identifier for this piece of equipment"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable equipment name"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Number of this item needed"
+          }
+        }
+      }
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "action", "inputs", "time", "activeTime"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "description": "Unique identifier for this operation, referenced by other operations or finishSteps"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["prep", "cook"],
+            "description": "Whether this is a preparation or cooking step"
+          },
+          "action": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Verb describing the operation (e.g., dice, saut\u00e9, simmer, boil)"
+          },
+          "inputs": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Array of ingredient IDs or previous operation IDs forming the DAG edges"
+          },
+          "equipment": {
+            "type": "object",
+            "required": ["use", "release"],
+            "additionalProperties": false,
+            "properties": {
+              "use": {
+                "type": "string",
+                "description": "Equipment ID being used"
+              },
+              "release": {
+                "type": "boolean",
+                "description": "If true, equipment is freed after this operation. If false, next operation continues using it."
+              }
+            }
+          },
+          "time": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Total duration of the operation in minutes"
+          },
+          "activeTime": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Minutes of active attention required (0 for passive operations like simmering)"
+          },
+          "scalable": {
+            "type": "boolean",
+            "default": true,
+            "description": "If false, time does not change when scaling servings (e.g., simmering). Defaults to true."
+          },
+          "heat": {
+            "type": "string",
+            "description": "Heat level (e.g., low, medium, medium-high, high)"
+          },
+          "details": {
+            "type": "string",
+            "description": "Additional instructions for this operation"
+          },
+          "output": {
+            "type": "string",
+            "description": "Name of the sub-product this operation produces"
+          }
+        }
+      }
+    },
+    "subProducts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "finalOp"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for this sub-product (display label only, not used in DAG)"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable name for the intermediate product"
+          },
+          "finalOp": {
+            "type": "string",
+            "description": "Operation ID that produces this sub-product"
+          }
+        }
+      }
+    },
+    "finishSteps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["action", "inputs"],
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Verb describing the finishing action"
+          },
+          "inputs": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of operation IDs (always operation IDs, never sub-product IDs)"
+          },
+          "details": {
+            "type": "string",
+            "description": "Additional instructions for this finishing step"
+          }
+        }
+      }
+    }
+  }
+}

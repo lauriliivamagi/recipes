@@ -1,0 +1,50 @@
+{
+  "volume": {
+    "cup": { "ml": 240 },
+    "tbsp": { "ml": 15 },
+    "tsp": { "ml": 5 },
+    "fl oz": { "ml": 30 },
+    "pint": { "ml": 473 },
+    "quart": { "ml": 946 },
+    "gallon": { "ml": 3785 },
+    "liter": { "ml": 1000 },
+    "l": { "ml": 1000 },
+    "dl": { "ml": 100 },
+    "ml": { "ml": 1 }
+  },
+  "weight": {
+    "oz": { "g": 28.35 },
+    "lb": { "g": 453.6 },
+    "kg": { "g": 1000 },
+    "g": { "g": 1 }
+  },
+  "temperature": {
+    "fahrenheit_to_celsius": "( F - 32 ) * 5 / 9"
+  },
+  "aliases": {
+    "tablespoon": "tbsp",
+    "tablespoons": "tbsp",
+    "teaspoon": "tsp",
+    "teaspoons": "tsp",
+    "cups": "cup",
+    "ounce": "oz",
+    "ounces": "oz",
+    "pound": "lb",
+    "pounds": "lb",
+    "fluid ounce": "fl oz",
+    "fluid ounces": "fl oz",
+    "pints": "pint",
+    "quarts": "quart",
+    "gallons": "gallon",
+    "liters": "liter",
+    "litres": "liter",
+    "grams": "g",
+    "gram": "g",
+    "kilograms": "kg",
+    "kilogram": "kg",
+    "milliliters": "ml",
+    "millilitres": "ml",
+    "deciliters": "dl",
+    "decilitres": "dl"
+  }
+}

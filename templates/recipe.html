@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recipe</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #1a1a2e;
+  --card: #2a2a4a;
+  --card-raised: #33335a;
+  --text: #e0e0e0;
+  --text-dim: #8888aa;
+  --text-muted: #6a6a8a;
+  --accent-orange: #f4a261;
+  --accent-teal: #4ecdc4;
+  --accent-purple: #7c5cfc;
+  --accent-gray: #8a8a9a;
+  --danger: #e74c3c;
+  --success: #2ecc71;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --touch-min: 48px;
+  --transition: 0.2s ease;
+
+  /* Fluid typography */
+  --text-xs: clamp(0.7rem, 0.65rem + 0.25vw, 0.8rem);
+  --text-sm: clamp(0.8rem, 0.75rem + 0.25vw, 0.9rem);
+  --text-base: clamp(0.875rem, 0.825rem + 0.25vw, 1rem);
+  --text-lg: clamp(1rem, 0.9rem + 0.5vw, 1.25rem);
+  --text-xl: clamp(1.25rem, 1rem + 1.25vw, 1.75rem);
+  --text-2xl: clamp(1.5rem, 1.25rem + 1.25vw, 2.25rem);
+
+  /* Fluid spacing */
+  --space-xs: clamp(4px, 0.2rem + 0.25vw, 8px);
+  --space-sm: clamp(8px, 0.4rem + 0.5vw, 12px);
+  --space-md: clamp(12px, 0.6rem + 0.75vw, 20px);
+  --space-lg: clamp(16px, 0.8rem + 1vw, 28px);
+}
+
+html { font-size: 16px; }
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+
+/* === HEADER === */
+.recipe-header {
+  padding: var(--space-lg) var(--space-md) var(--space-sm);
+  text-align: center;
+}
+.recipe-header h1 {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: #fff;
+}
+.recipe-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  justify-content: center;
+  font-size: var(--text-sm);
+  color: var(--text-dim);
+  margin-top: 8px;
+}
+.recipe-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.difficulty-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.difficulty-easy { background: var(--success); color: #111; }
+.difficulty-medium { background: var(--accent-orange); color: #111; }
+.difficulty-hard { background: var(--danger); color: #fff; }
+
+/* === SERVINGS ADJUSTER === */
+.servings-adjuster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+.servings-adjuster label {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+.servings-btn {
+  width: var(--touch-min);
+  height: var(--touch-min);
+  border-radius: 50%;
+  border: 2px solid var(--accent-teal);
+  background: transparent;
+  color: var(--accent-teal);
+  font-size: 1.4rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition), color var(--transition);
+  -webkit-user-select: none;
+  user-select: none;
+}
+.servings-btn:active {
+  background: var(--accent-teal);
+  color: var(--bg);
+}
+.servings-count {
+  font-size: 1.5rem;
+  font-weight: 700;
+  min-width: 48px;
+  text-align: center;
+  color: #fff;
+}
+
+/* === VIEW TOGGLE (tabs) === */
+.view-tabs {
+  display: flex;
+  margin: 0 16px 16px;
+  background: var(--card);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.view-tab {
+  flex: 1;
+  padding: 12px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  min-height: var(--touch-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.view-tab.active {
+  background: var(--accent-teal);
+  color: #111;
+}
+
+/* === OVERVIEW VIEW === */
+.view { display: none; }
+.view.active { display: block; }
+
+/* Mode toggle */
+.mode-toggle {
+  display: flex;
+  margin: 0 16px 16px;
+  background: var(--card);
+  border-radius: var(--radius);
+  overflow: hidden;
+  position: relative;
+}
+.mode-btn {
+  flex: 1;
+  padding: 10px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  min-height: var(--touch-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  z-index: 1;
+}
+.mode-btn.active {
+  background: var(--accent-purple);
+  color: #fff;
+}
+
+/* Equipment summary */
+.equipment-summary {
+  margin: 0 16px 16px;
+  padding: 12px 16px;
+  background: var(--card);
+  border-radius: var(--radius);
+}
+.equipment-summary h3 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.equipment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.equipment-chip {
+  padding: 4px 12px;
+  background: var(--card-raised);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+/* Phases */
+.phase-list {
+  padding: 0 16px 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.phase-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform var(--transition);
+}
+.phase-card:active { transform: scale(0.98); }
+.phase-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-left: 4px solid;
+}
+.phase-header.prep { border-color: var(--accent-orange); }
+.phase-header.cook, .phase-header.build { border-color: var(--accent-teal); }
+.phase-header.simmer, .phase-header.passive { border-color: var(--accent-purple); }
+.phase-header.finish { border-color: var(--accent-gray); }
+.phase-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #111;
+}
+.phase-label.prep { background: var(--accent-orange); }
+.phase-label.cook, .phase-label.build { background: var(--accent-teal); }
+.phase-label.simmer, .phase-label.passive { background: var(--accent-purple); color: #fff; }
+.phase-label.finish { background: var(--accent-gray); }
+.phase-time {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+.phase-ops {
+  padding: 0 16px 12px;
+}
+.phase-op {
+  padding: 8px 0;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.phase-op:first-child { border-top: none; }
+.phase-op-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.op-action-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: rgba(255,255,255,0.08);
+  color: var(--text-dim);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.op-text {
+  font-size: var(--text-base);
+  flex: 1;
+}
+.op-text .qty { font-weight: 700; color: #fff; }
+.op-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+.op-meta-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.parallel-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.parallel-group .phase-op {
+  background: rgba(255,255,255,0.03);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  border-top: none;
+}
+.passive-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: var(--accent-purple);
+  color: #fff;
+  margin-left: 4px;
+}
+
+/* === COOKING VIEW === */
+.cooking-view { padding-bottom: 120px; }
+
+/* Awareness bar */
+.awareness-bar {
+  padding: 8px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 0;
+}
+.awareness-bar:empty { display: none; }
+.awareness-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--accent-purple);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #fff;
+  cursor: pointer;
+  transition: transform var(--transition);
+  animation: pillPulse 2s ease-in-out infinite;
+}
+@keyframes pillPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+.awareness-pill.done {
+  background: var(--success);
+  animation: none;
+}
+
+/* Focus card */
+.focus-card {
+  margin: var(--space-sm) var(--space-md);
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: var(--space-lg);
+  position: relative;
+}
+.step-counter {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent-teal);
+  margin-bottom: 8px;
+}
+.focus-action {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 12px;
+  text-transform: capitalize;
+}
+.focus-details {
+  font-size: var(--text-base);
+  line-height: 1.6;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+.focus-details .qty { font-weight: 700; color: #fff; }
+.focus-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.focus-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  background: var(--card-raised);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+.focus-tag .icon { font-size: 0.9rem; }
+.timer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--accent-orange);
+  color: #111;
+  border: none;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform var(--transition), opacity var(--transition);
+  min-height: var(--touch-min);
+}
+.timer-btn:active { transform: scale(0.95); }
+.timer-btn.running {
+  background: var(--accent-purple);
+  color: #fff;
+}
+
+/* Secondary parallel task */
+.secondary-task {
+  margin: 0 16px 12px;
+  padding: 14px 16px;
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px dashed rgba(255,255,255,0.15);
+  cursor: pointer;
+  transition: transform var(--transition);
+}
+.secondary-task:active { transform: scale(0.98); }
+.secondary-task-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent-teal);
+  margin-bottom: 4px;
+}
+.secondary-task-summary {
+  font-size: 0.95rem;
+  color: var(--text);
+}
+.secondary-task-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Next-up preview */
+.next-preview {
+  margin: 0 16px 12px;
+  padding: 14px 16px;
+  background: var(--card);
+  border-radius: var(--radius);
+  opacity: 0.5;
+  transition: opacity var(--transition);
+}
+.next-preview-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.next-preview-text {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+}
+
+/* Navigation buttons */
+.nav-buttons {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: 1px;
+  background: var(--bg);
+  padding: 8px 16px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  z-index: 100;
+}
+.nav-btn {
+  flex: 1;
+  min-height: var(--touch-min);
+  padding: 12px 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background var(--transition), transform var(--transition);
+}
+.nav-btn:active { transform: scale(0.97); }
+.nav-btn-back {
+  background: var(--card);
+  color: var(--text);
+}
+.nav-btn-next {
+  background: var(--accent-teal);
+  color: #111;
+}
+.nav-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* === SCROLLBAR === */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--card-raised); border-radius: 2px; }
+
+/* === ANIMATIONS === */
+.fade-in { animation: fadeIn 0.2s ease; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* === RESPONSIVE === */
+
+/* Tablet */
+@media (min-width: 600px) {
+  .phase-list, .focus-card, .secondary-task, .next-preview, .awareness-bar,
+  .equipment-summary, .mode-toggle, .view-tabs, .servings-adjuster {
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .nav-buttons { max-width: 640px; left: 50%; transform: translateX(-50%); }
+  .recipe-header { padding: 28px 24px 16px; }
+  .parallel-group { gap: 12px; }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+  .phase-list, .focus-card, .secondary-task, .next-preview, .awareness-bar,
+  .equipment-summary, .mode-toggle, .view-tabs, .servings-adjuster {
+    max-width: 720px;
+  }
+  .nav-buttons { max-width: 720px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="recipe-header" id="recipeHeader"></header>
+
+<!-- Servings adjuster -->
+<div class="servings-adjuster" id="servingsAdjuster"></div>
+
+<!-- View tabs -->
+<div class="view-tabs" id="viewTabs"></div>
+
+<!-- Overview View -->
+<section class="view active" id="overviewView">
+  <div class="mode-toggle" id="modeToggle"></div>
+  <div class="equipment-summary" id="equipmentSummary"></div>
+  <div class="phase-list" id="phaseList"></div>
+</section>
+
+<!-- Cooking View -->
+<section class="view cooking-view" id="cookingView">
+  <div class="awareness-bar" id="awarenessBar"></div>
+  <div id="focusArea"></div>
+  <div class="nav-buttons" id="navButtons"></div>
+</section>
+
+<script>
+/* NOTE: All data is injected at build time from trusted recipe JSON sources.
+   The esc() function provides HTML entity encoding for all rendered text. */
+const RECIPE = {{RECIPE_JSON}};
+const I18N = {{I18N_JSON}};
+const SCHEDULE_RELAXED = {{SCHEDULE_RELAXED_JSON}};
+const SCHEDULE_OPTIMIZED = {{SCHEDULE_OPTIMIZED_JSON}};
+
+/* ===================================================================
+   STATE
+   =================================================================== */
+const state = {
+  servings: RECIPE.meta.servings,
+  originalServings: RECIPE.meta.servings,
+  view: 'overview',
+  mode: 'relaxed',
+  currentStep: 0,
+  timers: {},
+  notificationPermission: false,
+};
+
+/* ===================================================================
+   HELPERS
+   =================================================================== */
+function $(sel) { return document.querySelector(sel); }
+
+function getSchedule() {
+  return state.mode === 'relaxed' ? SCHEDULE_RELAXED : SCHEDULE_OPTIMIZED;
+}
+
+function getScaleFactor() {
+  return state.servings / state.originalServings;
+}
+
+function scaleQuantity(qty, unit) {
+  if (qty == null) return null;
+  var scaled = qty * getScaleFactor();
+  var wholeUnits = ['whole', 'cloves', 'clove', 'pieces', 'piece', 'slices',
+    'slice', 'leaves', 'leaf', 'sprigs', 'sprig', 'stalks', 'stalk',
+    'heads', 'head', 'bunches', 'bunch', 'ears', 'ear'];
+  if (wholeUnits.indexOf((unit || '').toLowerCase()) !== -1) {
+    return Math.max(1, Math.round(scaled));
+  }
+  var u = (unit || '').toLowerCase();
+  if (u === 'g' || u === 'ml') {
+    if (scaled > 50) return Math.round(scaled / 5) * 5;
+    return Math.round(scaled);
+  }
+  var r = Math.round(scaled * 10) / 10;
+  return r === Math.floor(r) ? Math.floor(r) : r;
+}
+
+function scaleTime(op) {
+  if (op.scalable === false) return op.time;
+  var factor = getScaleFactor();
+  if (factor <= 1) return Math.max(1, Math.round(op.time * factor));
+  return Math.round(op.time * Math.sqrt(factor));
+}
+
+function getIngredient(id) {
+  return RECIPE.ingredients.find(function(i) { return i.id === id; });
+}
+
+function getOperation(id) {
+  return RECIPE.operations.find(function(o) { return o.id === id; });
+}
+
+function formatIngredientInline(ingId) {
+  var ing = getIngredient(ingId);
+  if (!ing) return '';
+  var qty = scaleQuantity(ing.quantity, ing.unit);
+  var unitStr = (ing.unit && ing.unit !== 'whole') ? ' ' + esc(ing.unit) : '';
+  var qtyStr = qty != null ? '<span class="qty">' + qty + unitStr + '</span> ' : '';
+  return qtyStr + esc(ing.name);
+}
+
+function getOpIngredients(op) {
+  if (!op.inputs) return [];
+  return op.inputs.filter(function(id) { return !!getIngredient(id); });
+}
+
+function buildOpDescription(op) {
+  var parts = [];
+  var ings = getOpIngredients(op);
+  if (ings.length > 0) {
+    parts.push(ings.map(formatIngredientInline).join(', '));
+  }
+  if (op.details) {
+    parts.push(esc(op.details));
+  }
+  return parts.join(' &mdash; ');
+}
+
+function phaseColorClass(type) {
+  var t = (type || '').toLowerCase();
+  if (t === 'prep') return 'prep';
+  if (t === 'cook' || t === 'build') return 'cook';
+  if (t === 'simmer' || t === 'passive') return 'simmer';
+  if (t === 'finish') return 'finish';
+  return 'cook';
+}
+
+function phaseLabel(type) {
+  var t = (type || '').toLowerCase();
+  return I18N.phases[t] || type || '';
+}
+
+function formatMinutes(min) {
+  return min + ' ' + I18N.labels.minutes;
+}
+
+function formatTimerDisplay(seconds) {
+  var m = Math.floor(seconds / 60);
+  var s = seconds % 60;
+  return m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+function esc(str) {
+  if (str == null) return '';
+  var d = document.createElement('div');
+  d.textContent = String(str);
+  return d.innerHTML;
+}
+
+function capitalize(str) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/* ===================================================================
+   RENDER: HEADER
+   =================================================================== */
+function renderHeader() {
+  var m = RECIPE.meta;
+  var diffClass = 'difficulty-' + (m.difficulty || 'easy');
+  var totalTime = m.totalTime ? m.totalTime[state.mode] : null;
+
+  var h = document.createElement('div');
+
+  var h1 = document.createElement('h1');
+  h1.textContent = m.title;
+  h.appendChild(h1);
+
+  var metaDiv = document.createElement('div');
+  metaDiv.className = 'recipe-meta';
+
+  if (m.difficulty) {
+    var span = document.createElement('span');
+    span.className = 'recipe-meta-item';
+    var badge = document.createElement('span');
+    badge.className = 'difficulty-badge ' + diffClass;
+    badge.textContent = m.difficulty;
+    span.appendChild(badge);
+    metaDiv.appendChild(span);
+  }
+  if (totalTime) {
+    var timeSpan = document.createElement('span');
+    timeSpan.className = 'recipe-meta-item';
+    timeSpan.textContent = I18N.labels.totalTime + ': ' + formatMinutes(totalTime);
+    metaDiv.appendChild(timeSpan);
+  }
+  if (m.tags && m.tags.length) {
+    var tagSpan = document.createElement('span');
+    tagSpan.className = 'recipe-meta-item';
+    tagSpan.textContent = m.tags.map(function(t) { return '#' + t; }).join(' ');
+    metaDiv.appendChild(tagSpan);
+  }
+
+  h.appendChild(metaDiv);
+  var header = $('#recipeHeader');
+  header.textContent = '';
+  while (h.firstChild) header.appendChild(h.firstChild);
+  document.title = m.title;
+}
+
+/* ===================================================================
+   RENDER: SERVINGS
+   =================================================================== */
+function renderServings() {
+  var container = $('#servingsAdjuster');
+  container.textContent = '';
+
+  var label = document.createElement('label');
+  label.textContent = I18N.labels.servings;
+  container.appendChild(label);
+
+  var minusBtn = document.createElement('button');
+  minusBtn.className = 'servings-btn';
+  minusBtn.setAttribute('aria-label', 'Decrease servings');
+  minusBtn.textContent = '\u2212';
+  minusBtn.addEventListener('click', function() { adjustServings(-1); });
+  container.appendChild(minusBtn);
+
+  var count = document.createElement('span');
+  count.className = 'servings-count';
+  count.id = 'servingsCount';
+  count.textContent = state.servings;
+  container.appendChild(count);
+
+  var plusBtn = document.createElement('button');
+  plusBtn.className = 'servings-btn';
+  plusBtn.setAttribute('aria-label', 'Increase servings');
+  plusBtn.textContent = '+';
+  plusBtn.addEventListener('click', function() { adjustServings(1); });
+  container.appendChild(plusBtn);
+}
+
+function adjustServings(delta) {
+  var next = state.servings + delta;
+  if (next < 1 || next > 99) return;
+  state.servings = next;
+  renderAll();
+}
+
+/* ===================================================================
+   RENDER: VIEW TABS
+   =================================================================== */
+function renderViewTabs() {
+  var container = $('#viewTabs');
+  container.textContent = '';
+
+  var overviewBtn = document.createElement('button');
+  overviewBtn.className = 'view-tab' + (state.view === 'overview' ? ' active' : '');
+  overviewBtn.textContent = I18N.nav.overview;
+  overviewBtn.addEventListener('click', function() { switchView('overview'); });
+  container.appendChild(overviewBtn);
+
+  var cookingBtn = document.createElement('button');
+  cookingBtn.className = 'view-tab' + (state.view === 'cooking' ? ' active' : '');
+  cookingBtn.textContent = I18N.nav.cooking;
+  cookingBtn.addEventListener('click', function() { switchView('cooking'); });
+  container.appendChild(cookingBtn);
+}
+
+function switchView(v) {
+  state.view = v;
+  renderAll();
+}
+
+/* ===================================================================
+   RENDER: MODE TOGGLE
+   =================================================================== */
+function renderModeToggle() {
+  var container = $('#modeToggle');
+  container.textContent = '';
+
+  var relaxedTime = RECIPE.meta.totalTime ? RECIPE.meta.totalTime.relaxed : '?';
+  var optimizedTime = RECIPE.meta.totalTime ? RECIPE.meta.totalTime.optimized : '?';
+
+  var relaxedBtn = document.createElement('button');
+  relaxedBtn.className = 'mode-btn' + (state.mode === 'relaxed' ? ' active' : '');
+  relaxedBtn.textContent = '\uD83D\uDE0C ' + I18N.toggle.relaxed + ' ' + relaxedTime + ' ' + I18N.labels.minutes;
+  relaxedBtn.addEventListener('click', function() { switchMode('relaxed'); });
+  container.appendChild(relaxedBtn);
+
+  var optimizedBtn = document.createElement('button');
+  optimizedBtn.className = 'mode-btn' + (state.mode === 'optimized' ? ' active' : '');
+  optimizedBtn.textContent = '\u26A1 ' + I18N.toggle.optimized + ' ' + optimizedTime + ' ' + I18N.labels.minutes;
+  optimizedBtn.addEventListener('click', function() { switchMode('optimized'); });
+  container.appendChild(optimizedBtn);
+}
+
+function switchMode(m) {
+  state.mode = m;
+  renderAll();
+}
+
+/* ===================================================================
+   RENDER: EQUIPMENT
+   =================================================================== */
+function renderEquipment() {
+  var container = $('#equipmentSummary');
+  if (!RECIPE.equipment || !RECIPE.equipment.length) {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = '';
+  container.textContent = '';
+
+  var h3 = document.createElement('h3');
+  h3.textContent = I18N.labels.equipment;
+  container.appendChild(h3);
+
+  var list = document.createElement('div');
+  list.className = 'equipment-list';
+  RECIPE.equipment.forEach(function(eq) {
+    var chip = document.createElement('span');
+    chip.className = 'equipment-chip';
+    chip.textContent = eq.count > 1 ? eq.count + 'x ' + eq.name : eq.name;
+    list.appendChild(chip);
+  });
+  container.appendChild(list);
+}
+
+/* ===================================================================
+   RENDER: PHASE LIST (Overview)
+   =================================================================== */
+function renderPhases() {
+  var schedule = getSchedule();
+  var container = $('#phaseList');
+  container.textContent = '';
+
+  var phases = Array.isArray(schedule) ? schedule : schedule.phases;
+  if (!phases || !phases.length) {
+    var p = document.createElement('p');
+    p.style.cssText = 'text-align:center;color:var(--text-dim)';
+    p.textContent = 'No schedule data';
+    container.appendChild(p);
+    return;
+  }
+
+  phases.forEach(function(phase, phaseIdx) {
+    var colorCls = phaseColorClass(phase.type);
+
+    var card = document.createElement('div');
+    card.className = 'phase-card fade-in';
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.addEventListener('click', function() { jumpToPhaseStep(phaseIdx); });
+
+    // Header
+    var header = document.createElement('div');
+    header.className = 'phase-header ' + colorCls;
+
+    var labelEl = document.createElement('span');
+    labelEl.className = 'phase-label ' + colorCls;
+    labelEl.textContent = phaseLabel(phase.type);
+    header.appendChild(labelEl);
+
+    if (phase.time) {
+      var timeEl = document.createElement('span');
+      timeEl.className = 'phase-time';
+      timeEl.textContent = formatMinutes(phase.time);
+      header.appendChild(timeEl);
+    }
+    card.appendChild(header);
+
+    // Operations
+    var opsDiv = document.createElement('div');
+    opsDiv.className = 'phase-ops';
+
+    if (phase.parallelOps && phase.parallelOps.length > 0) {
+      var parallelDiv = document.createElement('div');
+      parallelDiv.className = 'parallel-group';
+      phase.parallelOps.forEach(function(opRef) {
+        appendPhaseOp(parallelDiv, opRef);
+      });
+      opsDiv.appendChild(parallelDiv);
+    }
+
+    if ((phase.ops || phase.operations)) {
+      (phase.ops || phase.operations).forEach(function(opRef) {
+        appendPhaseOp(opsDiv, opRef);
+      });
+    }
+
+    card.appendChild(opsDiv);
+    container.appendChild(card);
+  });
+}
+
+function appendPhaseOp(parent, opRef) {
+  var opId = typeof opRef === 'string' ? opRef : (opRef.opId || opRef.id);
+  var op = getOperation(opId);
+
+  if (!op) {
+    // Check finishSteps (only if we have a valid opId)
+    if (opId && RECIPE.finishSteps) {
+      var fs = RECIPE.finishSteps.find(function(f) { return f.action === opId; });
+      if (fs) { appendFinishStepOp(parent, fs); return; }
+    }
+    if (typeof opRef === 'object' && opRef.action) { appendInlineOp(parent, opRef); return; }
+    return;
+  }
+
+  var isPassive = op.activeTime === 0;
+  var desc = buildOpDescription(op);
+
+  var div = document.createElement('div');
+  div.className = 'phase-op';
+
+  var row = document.createElement('div');
+  row.className = 'phase-op-row';
+
+  var tag = document.createElement('span');
+  tag.className = 'op-action-tag';
+  tag.textContent = op.action;
+  row.appendChild(tag);
+
+  var text = document.createElement('span');
+  text.className = 'op-text';
+  /* desc contains pre-escaped ingredient HTML with <span class="qty"> for bold quantities */
+  text.innerHTML = desc;
+  if (isPassive) {
+    var badge = document.createElement('span');
+    badge.className = 'passive-badge';
+    badge.textContent = I18N.labels.passive;
+    text.appendChild(badge);
+  }
+  row.appendChild(text);
+  div.appendChild(row);
+
+  if (op.time || op.heat) {
+    var meta = document.createElement('div');
+    meta.className = 'op-meta';
+    if (op.time) {
+      var tTag = document.createElement('span');
+      tTag.className = 'op-meta-tag';
+      tTag.textContent = '\u23F2 ' + formatMinutes(scaleTime(op));
+      meta.appendChild(tTag);
+    }
+    if (op.heat) {
+      var hTag = document.createElement('span');
+      hTag.className = 'op-meta-tag';
+      hTag.textContent = '\uD83D\uDD25 ' + op.heat;
+      meta.appendChild(hTag);
+    }
+    div.appendChild(meta);
+  }
+
+  parent.appendChild(div);
+}
+
+function appendFinishStepOp(parent, fs) {
+  var div = document.createElement('div');
+  div.className = 'phase-op';
+  var row = document.createElement('div');
+  row.className = 'phase-op-row';
+  var tag = document.createElement('span');
+  tag.className = 'op-action-tag';
+  tag.textContent = fs.action;
+  row.appendChild(tag);
+  var text = document.createElement('span');
+  text.className = 'op-text';
+  text.textContent = fs.details || '';
+  row.appendChild(text);
+  div.appendChild(row);
+  parent.appendChild(div);
+}
+
+function appendInlineOp(parent, opRef) {
+  var div = document.createElement('div');
+  div.className = 'phase-op';
+  var row = document.createElement('div');
+  row.className = 'phase-op-row';
+  var tag = document.createElement('span');
+  tag.className = 'op-action-tag';
+  tag.textContent = opRef.action || '';
+  row.appendChild(tag);
+  var text = document.createElement('span');
+  text.className = 'op-text';
+  text.textContent = opRef.details || opRef.description || '';
+  row.appendChild(text);
+  div.appendChild(row);
+  parent.appendChild(div);
+}
+
+/* ===================================================================
+   COOKING VIEW - Build flat step list from schedule
+   =================================================================== */
+function buildCookingSteps() {
+  var schedule = getSchedule();
+  var phases = Array.isArray(schedule) ? schedule : (schedule ? schedule.phases : null);
+  if (!phases || !phases.length) return [];
+
+  var steps = [];
+  phases.forEach(function(phase, phaseIdx) {
+    if (phase.parallelOps && phase.parallelOps.length >= 2) {
+      var ops = phase.parallelOps.map(function(ref) {
+        var id = typeof ref === 'string' ? ref : (ref.opId || ref.id);
+        return getOperation(id) || ref;
+      }).filter(Boolean);
+
+      if (ops.length >= 2) {
+        var sorted = ops.slice().sort(function(a, b) { return (b.activeTime || 0) - (a.activeTime || 0); });
+        steps.push({
+          type: 'parallel',
+          phaseType: phase.type,
+          phaseIdx: phaseIdx,
+          primary: sorted[0],
+          secondary: sorted.slice(1),
+        });
+      } else if (ops.length === 1) {
+        steps.push({ type: 'single', phaseType: phase.type, phaseIdx: phaseIdx, op: ops[0] });
+      }
+    }
+
+    if ((phase.ops || phase.operations)) {
+      (phase.ops || phase.operations).forEach(function(ref) {
+        var id = typeof ref === 'string' ? ref : (ref.opId || ref.id);
+        var op = getOperation(id);
+        if (op) {
+          steps.push({ type: 'single', phaseType: phase.type, phaseIdx: phaseIdx, op: op });
+        } else if (typeof ref === 'object' && ref.action) {
+          steps.push({ type: 'single', phaseType: phase.type, phaseIdx: phaseIdx, op: ref });
+        }
+      });
+    }
+  });
+
+  if (RECIPE.finishSteps) {
+    RECIPE.finishSteps.forEach(function(fs) {
+      steps.push({ type: 'single', phaseType: 'finish', phaseIdx: -1, op: fs });
+    });
+  }
+
+  return steps;
+}
+
+var cookingSteps = [];
+
+function jumpToPhaseStep(phaseIdx) {
+  state.view = 'cooking';
+  cookingSteps = buildCookingSteps();
+  var idx = cookingSteps.findIndex(function(s) { return s.phaseIdx === phaseIdx; });
+  state.currentStep = idx >= 0 ? idx : 0;
+  renderAll();
+  window.scrollTo(0, 0);
+}
+
+/* ===================================================================
+   RENDER: COOKING VIEW
+   =================================================================== */
+function renderCookingView() {
+  cookingSteps = buildCookingSteps();
+  var totalSteps = cookingSteps.length;
+  var focusArea = $('#focusArea');
+  focusArea.textContent = '';
+
+  if (totalSteps === 0) {
+    var p = document.createElement('p');
+    p.style.cssText = 'text-align:center;color:var(--text-dim);padding:40px';
+    p.textContent = 'No steps available';
+    focusArea.appendChild(p);
+    return;
+  }
+
+  var step = cookingSteps[state.currentStep];
+
+  if (step.type === 'parallel') {
+    focusArea.appendChild(buildFocusCard(step.primary, state.currentStep, totalSteps));
+    step.secondary.forEach(function(sec) {
+      focusArea.appendChild(buildSecondaryTask(sec));
+    });
+  } else {
+    focusArea.appendChild(buildFocusCard(step.op, state.currentStep, totalSteps));
+  }
+
+  // Next-up preview
+  if (state.currentStep < totalSteps - 1) {
+    var nextStep = cookingSteps[state.currentStep + 1];
+    var nextOp = nextStep.type === 'parallel' ? nextStep.primary : nextStep.op;
+    var nextLabel = (step.type === 'parallel') ? I18N.labels.afterBothComplete : I18N.labels.next;
+
+    var preview = document.createElement('div');
+    preview.className = 'next-preview fade-in';
+
+    var previewLabel = document.createElement('div');
+    previewLabel.className = 'next-preview-label';
+    previewLabel.textContent = nextLabel.toUpperCase();
+    preview.appendChild(previewLabel);
+
+    var previewText = document.createElement('div');
+    previewText.className = 'next-preview-text';
+    previewText.textContent = capitalize(nextOp.action || '') + (nextOp.details ? ' \u2014 ' + nextOp.details : '');
+    preview.appendChild(previewText);
+
+    focusArea.appendChild(preview);
+  }
+
+  // Nav buttons
+  renderNavButtons(totalSteps);
+}
+
+function buildFocusCard(op, stepIdx, totalSteps) {
+  var desc = op.id ? buildOpDescription(op) : esc(op.details || '');
+  var time = op.time ? scaleTime(op) : null;
+  var hasTimer = time && time > 0;
+
+  var card = document.createElement('div');
+  card.className = 'focus-card fade-in';
+
+  var counter = document.createElement('div');
+  counter.className = 'step-counter';
+  counter.textContent = I18N.labels.step + ' ' + (stepIdx + 1) + ' ' + I18N.labels.of + ' ' + totalSteps;
+  card.appendChild(counter);
+
+  var action = document.createElement('div');
+  action.className = 'focus-action';
+  action.textContent = capitalize(op.action || '');
+  card.appendChild(action);
+
+  var details = document.createElement('div');
+  details.className = 'focus-details';
+  /* desc contains pre-escaped text with <span class="qty"> for bold ingredient quantities */
+  details.innerHTML = desc;
+  card.appendChild(details);
+
+  var tags = document.createElement('div');
+  tags.className = 'focus-tags';
+
+  if (time) {
+    var timeTag = document.createElement('span');
+    timeTag.className = 'focus-tag';
+    timeTag.textContent = '\u23F2 ' + formatMinutes(time);
+    tags.appendChild(timeTag);
+  }
+  if (op.heat) {
+    var heatTag = document.createElement('span');
+    heatTag.className = 'focus-tag';
+    heatTag.textContent = '\uD83D\uDD25 ' + op.heat;
+    tags.appendChild(heatTag);
+  }
+  if (op.equipment) {
+    var eqName = typeof op.equipment === 'string' ? op.equipment : (op.equipment.use || '');
+    if (eqName) {
+      var eq = RECIPE.equipment && RECIPE.equipment.find(function(e) { return e.id === eqName; });
+      var eqTag = document.createElement('span');
+      eqTag.className = 'focus-tag';
+      eqTag.textContent = '\uD83C\uDF73 ' + (eq ? eq.name : eqName);
+      tags.appendChild(eqTag);
+    }
+  }
+  card.appendChild(tags);
+
+  if (hasTimer) {
+    var timerDiv = document.createElement('div');
+    timerDiv.style.marginTop = '12px';
+
+    var opId = op.id || ('step-' + stepIdx);
+    var running = state.timers[opId];
+
+    var btn = document.createElement('button');
+    if (running) {
+      btn.className = 'timer-btn running';
+      btn.textContent = '\u23F2 ' + formatTimerDisplay(running.remaining) + ' \u2014 tap to cancel';
+      btn.addEventListener('click', function() { cancelTimer(opId); });
+    } else {
+      btn.className = 'timer-btn';
+      btn.textContent = '\u23F2 Start ' + formatMinutes(time) + ' timer';
+      btn.addEventListener('click', function() { startTimer(opId, time); });
+    }
+    timerDiv.appendChild(btn);
+    card.appendChild(timerDiv);
+  }
+
+  return card;
+}
+
+function buildSecondaryTask(op) {
+  var desc = op.id ? buildOpDescription(op) : esc(op.details || '');
+
+  var container = document.createElement('div');
+  container.className = 'secondary-task fade-in';
+  container.addEventListener('click', function() { swapPrimarySecondary(); });
+
+  var label = document.createElement('div');
+  label.className = 'secondary-task-label';
+  label.textContent = I18N.labels.whileWaiting;
+  container.appendChild(label);
+
+  var summary = document.createElement('div');
+  summary.className = 'secondary-task-summary';
+  var strong = document.createElement('strong');
+  strong.textContent = capitalize(op.action || '');
+  summary.appendChild(strong);
+  /* desc contains pre-escaped text with <span class="qty"> for bold ingredient quantities */
+  var descSpan = document.createElement('span');
+  descSpan.innerHTML = ' \u2014 ' + desc;
+  summary.appendChild(descSpan);
+  container.appendChild(summary);
+
+  var hint = document.createElement('div');
+  hint.className = 'secondary-task-hint';
+  hint.textContent = I18N.labels.tapToExpand;
+  container.appendChild(hint);
+
+  return container;
+}
+
+function renderNavButtons(totalSteps) {
+  var nav = $('#navButtons');
+  nav.textContent = '';
+
+  var backBtn = document.createElement('button');
+  backBtn.className = 'nav-btn nav-btn-back';
+  backBtn.textContent = '\u2190 ' + I18N.nav.back;
+  backBtn.disabled = state.currentStep <= 0;
+  backBtn.addEventListener('click', function() { prevStep(); });
+  nav.appendChild(backBtn);
+
+  var nextBtn = document.createElement('button');
+  nextBtn.className = 'nav-btn nav-btn-next';
+  nextBtn.textContent = I18N.nav.next + ' \u2192';
+  nextBtn.disabled = state.currentStep >= totalSteps - 1;
+  nextBtn.addEventListener('click', function() { nextStep(); });
+  nav.appendChild(nextBtn);
+}
+
+function swapPrimarySecondary() {
+  var step = cookingSteps[state.currentStep];
+  if (step && step.type === 'parallel') {
+    var old = step.primary;
+    step.primary = step.secondary[0];
+    step.secondary[0] = old;
+    renderCookingView();
+  }
+}
+
+function prevStep() {
+  if (state.currentStep > 0) {
+    state.currentStep--;
+    renderCookingView();
+    renderAwareness();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+function nextStep() {
+  if (state.currentStep < cookingSteps.length - 1) {
+    state.currentStep++;
+    renderCookingView();
+    renderAwareness();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+/* ===================================================================
+   TIMERS
+   =================================================================== */
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().then(function(p) {
+      state.notificationPermission = (p === 'granted');
+    });
+  } else if ('Notification' in window) {
+    state.notificationPermission = (Notification.permission === 'granted');
+  }
+}
+
+function startTimer(opId, minutes) {
+  requestNotificationPermission();
+  if (state.timers[opId]) return;
+
+  var totalSeconds = minutes * 60;
+  state.timers[opId] = {
+    remaining: totalSeconds,
+    total: totalSeconds,
+    opId: opId,
+    interval: setInterval(function() { tickTimer(opId); }, 1000),
+  };
+  renderCookingView();
+  renderAwareness();
+}
+
+function tickTimer(opId) {
+  var t = state.timers[opId];
+  if (!t) return;
+  t.remaining--;
+  if (t.remaining <= 0) {
+    clearInterval(t.interval);
+    if (state.notificationPermission && 'Notification' in window) {
+      var op = getOperation(opId);
+      var title = op ? capitalize(op.action) : I18N.labels.timerDone;
+      try {
+        new Notification(I18N.labels.timerDone, {
+          body: title + ' \u2014 ' + RECIPE.meta.title,
+        });
+      } catch (e) { /* notification blocked */ }
+    }
+    t.remaining = 0;
+    t.done = true;
+    delete t.interval;
+  }
+  if (state.view === 'cooking') {
+    renderCookingView();
+    renderAwareness();
+  }
+}
+
+function cancelTimer(opId) {
+  var t = state.timers[opId];
+  if (t && t.interval) clearInterval(t.interval);
+  delete state.timers[opId];
+  if (state.view === 'cooking') {
+    renderCookingView();
+    renderAwareness();
+  }
+}
+
+function renderAwareness() {
+  var bar = $('#awarenessBar');
+  if (!bar) return;
+  var timerIds = Object.keys(state.timers);
+  bar.textContent = '';
+  if (timerIds.length === 0) return;
+
+  timerIds.forEach(function(opId) {
+    var t = state.timers[opId];
+    var op = getOperation(opId);
+    var label = op ? capitalize(op.action) : opId;
+
+    var pill = document.createElement('span');
+    pill.className = 'awareness-pill' + (t.done ? ' done' : '');
+    pill.addEventListener('click', function() { cancelTimer(opId); });
+
+    if (t.done) {
+      pill.textContent = '\u2705 ' + label + ' \u2014 ' + I18N.labels.timerDone;
+    } else {
+      pill.textContent = '\uD83C\uDF72 ' + label + ' \u2014 ' + formatTimerDisplay(t.remaining) + ' ' + I18N.labels.remaining;
+    }
+    bar.appendChild(pill);
+  });
+}
+
+/* ===================================================================
+   RENDER ALL
+   =================================================================== */
+function renderAll() {
+  renderHeader();
+  renderServings();
+  renderViewTabs();
+
+  $('#overviewView').classList.toggle('active', state.view === 'overview');
+  $('#cookingView').classList.toggle('active', state.view === 'cooking');
+
+  if (state.view === 'overview') {
+    renderModeToggle();
+    renderEquipment();
+    renderPhases();
+    var nav = $('#navButtons');
+    if (nav) nav.style.display = 'none';
+  } else {
+    renderCookingView();
+    renderAwareness();
+    var nav2 = $('#navButtons');
+    if (nav2) nav2.style.display = 'flex';
+  }
+}
+
+/* ===================================================================
+   KEYBOARD NAVIGATION
+   =================================================================== */
+document.addEventListener('keydown', function(e) {
+  if (state.view !== 'cooking') return;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    e.preventDefault();
+    nextStep();
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    prevStep();
+  }
+});
+
+/* ===================================================================
+   SWIPE NAVIGATION (mobile)
+   =================================================================== */
+var touchStartX = 0;
+var touchStartY = 0;
+document.addEventListener('touchstart', function(e) {
+  touchStartX = e.changedTouches[0].screenX;
+  touchStartY = e.changedTouches[0].screenY;
+}, { passive: true });
+
+document.addEventListener('touchend', function(e) {
+  if (state.view !== 'cooking') return;
+  var dx = e.changedTouches[0].screenX - touchStartX;
+  var dy = e.changedTouches[0].screenY - touchStartY;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    if (dx < 0) nextStep();
+    else prevStep();
+  }
+}, { passive: true });
+
+/* ===================================================================
+   INIT
+   =================================================================== */
+renderAll();
+</script>
+</body>
+</html>
