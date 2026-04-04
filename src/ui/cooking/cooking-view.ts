@@ -147,6 +147,17 @@ export class CookingView extends LitElement {
         from { opacity: 0; transform: translateY(8px); }
         to { opacity: 1; transform: translateY(0); }
       }
+
+      @media (min-width: 600px) {
+        .step-counter,
+        .progress-track,
+        .timer-row,
+        .completion-card {
+          max-width: 640px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+      }
     `,
   ];
 

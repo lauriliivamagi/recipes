@@ -26,36 +26,44 @@ export class CatalogPage extends LitElement {
       :host {
         display: block;
         background: var(--bg);
-        min-height: 100vh;
+        min-height: 100dvh;
       }
 
       .container {
         max-width: 960px;
         margin: 0 auto;
-        padding: 1.5rem 1rem;
+        padding: 2rem 1.25rem;
       }
 
       header {
         text-align: center;
-        margin-bottom: 1.5rem;
+        margin-bottom: 2rem;
       }
 
       header h1 {
-        font-size: 1.75rem;
+        font-size: var(--text-2xl);
         font-weight: 700;
         color: var(--accent-orange);
         margin-bottom: 0.25rem;
       }
 
       .recipe-count {
-        font-size: 0.875rem;
-        color: #888;
+        font-size: var(--text-sm);
+        color: var(--text-dim);
+      }
+
+      search-bar {
+        margin-bottom: 1rem;
+      }
+
+      tag-filters {
+        margin-bottom: 2rem;
       }
 
       .recipe-grid {
         display: grid;
         grid-template-columns: 1fr;
-        gap: 1rem;
+        gap: 1.25rem;
       }
 
       @media (min-width: 520px) {
@@ -73,8 +81,8 @@ export class CatalogPage extends LitElement {
       .empty-state {
         text-align: center;
         padding: 3rem 1rem;
-        color: #666;
-        font-size: 1.05rem;
+        color: var(--text-muted);
+        font-size: var(--text-base);
         grid-column: 1 / -1;
       }
     `,

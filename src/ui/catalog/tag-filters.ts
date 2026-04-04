@@ -12,20 +12,21 @@ export class TagFilters extends LitElement {
       :host {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.375rem;
-        margin-bottom: 1.25rem;
+        gap: var(--space-sm);
+        margin-bottom: 2rem;
       }
 
       .tag-pill {
-        display: inline-block;
-        padding: 0.25rem 0.625rem;
+        display: inline-flex;
+        align-items: center;
+        padding: 0.375rem 0.75rem;
         border-radius: 999px;
-        font-size: 0.75rem;
+        font-size: var(--text-xs);
         font-weight: 500;
         cursor: pointer;
-        border: 1px solid #3a3a5a;
+        border: 1px solid rgba(255, 255, 255, 0.1);
         background: var(--card);
-        color: #aaa;
+        color: var(--text-dim);
         transition: all var(--transition);
         user-select: none;
       }

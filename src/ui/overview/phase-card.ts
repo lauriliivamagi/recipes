@@ -27,6 +27,7 @@ export class PhaseCard extends LitElement {
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 8px;
         padding: 12px 16px;
         border-left: 4px solid;
       }
@@ -38,13 +39,16 @@ export class PhaseCard extends LitElement {
       .phase-header.finish { border-color: var(--accent-gray); }
 
       .phase-label {
-        font-size: 0.7rem;
+        font-size: var(--text-xs);
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 1px;
         padding: 2px 8px;
         border-radius: 4px;
         color: #111;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .phase-label.prep { background: var(--accent-orange); }
       .phase-label.cook,
@@ -54,8 +58,10 @@ export class PhaseCard extends LitElement {
       .phase-label.finish { background: var(--accent-gray); }
 
       .phase-time {
-        font-size: 0.8rem;
+        font-size: var(--text-sm);
         color: var(--text-dim);
+        flex-shrink: 0;
+        white-space: nowrap;
       }
 
       .phase-ops {
@@ -78,7 +84,7 @@ export class PhaseCard extends LitElement {
         display: inline-block;
         padding: 2px 8px;
         border-radius: 4px;
-        font-size: 0.7rem;
+        font-size: var(--text-xs);
         font-weight: 600;
         text-transform: uppercase;
         background: rgba(255, 255, 255, 0.08);
@@ -101,7 +107,7 @@ export class PhaseCard extends LitElement {
         display: flex;
         gap: 8px;
         margin-top: 4px;
-        font-size: 0.75rem;
+        font-size: var(--text-xs);
         color: var(--text-dim);
       }
 
@@ -115,7 +121,7 @@ export class PhaseCard extends LitElement {
         display: inline-block;
         padding: 1px 6px;
         border-radius: 4px;
-        font-size: 0.65rem;
+        font-size: var(--text-xs);
         font-weight: 600;
         text-transform: uppercase;
         background: var(--accent-purple);
@@ -125,8 +131,14 @@ export class PhaseCard extends LitElement {
 
       .parallel-group {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr;
         gap: 8px;
+      }
+
+      @media (min-width: 480px) {
+        .parallel-group {
+          grid-template-columns: 1fr 1fr;
+        }
       }
       .parallel-group .phase-op {
         background: rgba(255, 255, 255, 0.03);

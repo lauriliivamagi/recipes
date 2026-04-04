@@ -20,7 +20,7 @@ export class EquipmentSummary extends LitElement {
       }
 
       h3 {
-        font-size: 0.8rem;
+        font-size: var(--text-sm);
         text-transform: uppercase;
         letter-spacing: 1px;
         color: var(--text-dim);
@@ -37,7 +37,7 @@ export class EquipmentSummary extends LitElement {
         padding: 4px 12px;
         background: var(--card-raised);
         border-radius: 20px;
-        font-size: 0.8rem;
+        font-size: var(--text-sm);
         color: var(--text);
       }
 

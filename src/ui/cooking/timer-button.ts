@@ -21,7 +21,7 @@ export class TimerButton extends LitElement {
         color: #111;
         border: none;
         border-radius: 20px;
-        font-size: 0.85rem;
+        font-size: var(--text-sm);
         font-weight: 600;
         cursor: pointer;
         transition: transform var(--transition), opacity var(--transition);

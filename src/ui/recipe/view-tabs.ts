@@ -25,7 +25,7 @@ export class ViewTabs extends LitElement {
         border: none;
         background: transparent;
         color: var(--text-dim);
-        font-size: 0.9rem;
+        font-size: var(--text-base);
         font-weight: 600;
         cursor: pointer;
         transition: background var(--transition), color var(--transition);

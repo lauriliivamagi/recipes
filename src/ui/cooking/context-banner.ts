@@ -34,6 +34,14 @@ export class ContextBanner extends LitElement {
         font-size: var(--text-xs);
         color: rgba(255, 255, 255, 0.7);
       }
+
+      @media (min-width: 600px) {
+        .context-banner {
+          max-width: 640px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+      }
     `,
   ];
 

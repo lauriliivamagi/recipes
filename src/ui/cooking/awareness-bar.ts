@@ -35,7 +35,7 @@ export class AwarenessBar extends LitElement {
         padding: 6px 12px;
         background: var(--accent-purple);
         border-radius: 20px;
-        font-size: 0.8rem;
+        font-size: var(--text-sm);
         font-weight: 500;
         color: #fff;
         cursor: pointer;
@@ -55,6 +55,14 @@ export class AwarenessBar extends LitElement {
       @keyframes pillPulse {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.8; }
+      }
+
+      @media (min-width: 600px) {
+        .awareness-bar {
+          max-width: 640px;
+          margin-left: auto;
+          margin-right: auto;
+        }
       }
     `,
   ];

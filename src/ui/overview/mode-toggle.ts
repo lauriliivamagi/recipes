@@ -27,7 +27,7 @@ export class ModeToggle extends LitElement {
         border: none;
         background: transparent;
         color: var(--text-dim);
-        font-size: 0.85rem;
+        font-size: var(--text-sm);
         font-weight: 600;
         cursor: pointer;
         transition: background var(--transition), color var(--transition);

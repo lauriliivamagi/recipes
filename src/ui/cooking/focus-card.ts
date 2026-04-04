@@ -64,11 +64,11 @@ export class FocusCard extends LitElement {
         padding: 4px 12px;
         background: var(--card-raised);
         border-radius: 20px;
-        font-size: 0.8rem;
+        font-size: var(--text-sm);
         color: var(--text-dim);
       }
 
-      .focus-tag .icon { font-size: 0.9rem; }
+      .focus-tag .icon { font-size: var(--text-base); }
 
       .focus-hint {
         font-size: var(--text-sm);
@@ -87,6 +87,14 @@ export class FocusCard extends LitElement {
         background: rgba(124, 92, 252, 0.2);
         color: var(--accent-purple);
         border: 1px solid rgba(124, 92, 252, 0.3);
+      }
+
+      @media (min-width: 600px) {
+        .focus-card {
+          max-width: 640px;
+          margin-left: auto;
+          margin-right: auto;
+        }
       }
     `,
   ];

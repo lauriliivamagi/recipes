@@ -76,6 +76,15 @@ export class NavButtons extends LitElement {
       .nav-buttons-wrapper {
         position: relative;
       }
+
+      @media (min-width: 600px) {
+        .nav-buttons {
+          max-width: 672px;
+          margin: 0 auto;
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+      }
     `,
   ];
 

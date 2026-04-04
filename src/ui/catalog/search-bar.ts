@@ -11,14 +11,14 @@ export class SearchBar extends LitElement {
     css`
       :host {
         display: block;
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
       }
 
       input {
         width: 100%;
         padding: 0.625rem 1rem;
         border-radius: var(--radius-sm);
-        border: 1px solid #3a3a5a;
+        border: 1px solid rgba(255, 255, 255, 0.1);
         background: var(--card);
         color: var(--text);
         font-size: var(--text-base);
@@ -28,7 +28,7 @@ export class SearchBar extends LitElement {
       }
 
       input::placeholder {
-        color: #777;
+        color: var(--text-muted);
       }
 
       input:focus {

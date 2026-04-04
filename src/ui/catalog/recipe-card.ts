@@ -30,13 +30,13 @@ export class RecipeCard extends LitElement {
       a:hover {
         transform: translateY(-3px);
         box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-        border-color: #3a3a5a;
+        border-color: rgba(255, 255, 255, 0.1);
       }
 
       h2 {
-        font-size: 1.05rem;
+        font-size: var(--text-base);
         font-weight: 600;
-        color: #f0f0f0;
+        color: var(--text);
         line-height: 1.3;
       }
 
@@ -47,7 +47,7 @@ export class RecipeCard extends LitElement {
       }
 
       .card-tag {
-        font-size: 0.675rem;
+        font-size: var(--text-xs);
         padding: 0.125rem 0.5rem;
         border-radius: 999px;
         background: rgba(78, 205, 196, 0.12);
@@ -60,15 +60,15 @@ export class RecipeCard extends LitElement {
         align-items: center;
         gap: 0.5rem;
         margin-top: auto;
-        font-size: 0.8rem;
-        color: #999;
+        font-size: var(--text-sm);
+        color: var(--text-dim);
       }
 
       .badge {
         display: inline-block;
         padding: 0.125rem 0.5rem;
         border-radius: 999px;
-        font-size: 0.7rem;
+        font-size: var(--text-xs);
         font-weight: 600;
         text-transform: capitalize;
       }
@@ -89,7 +89,7 @@ export class RecipeCard extends LitElement {
       }
 
       .meta-sep {
-        color: #444;
+        color: var(--text-muted);
       }
     `,
   ];

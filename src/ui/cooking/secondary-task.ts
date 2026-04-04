@@ -26,7 +26,7 @@ export class SecondaryTask extends LitElement {
       .secondary-task:active { transform: scale(0.98); }
 
       .secondary-task-label {
-        font-size: 0.7rem;
+        font-size: var(--text-xs);
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 1px;
@@ -35,13 +35,13 @@ export class SecondaryTask extends LitElement {
       }
 
       .secondary-task-summary {
-        font-size: 0.95rem;
+        font-size: var(--text-base);
         color: var(--text);
         margin-bottom: 4px;
       }
 
       .secondary-task-hint {
-        font-size: 0.75rem;
+        font-size: var(--text-xs);
         color: var(--text-muted);
         margin-top: 4px;
       }
@@ -56,14 +56,22 @@ export class SecondaryTask extends LitElement {
 
       .op-action {
         font-weight: 600;
-        color: #fff;
+        color: var(--text);
         text-transform: capitalize;
       }
 
       .op-details {
-        font-size: 0.85rem;
+        font-size: var(--text-sm);
         color: var(--text-dim);
         margin-top: 2px;
+      }
+
+      @media (min-width: 600px) {
+        .secondary-task {
+          max-width: 640px;
+          margin-left: auto;
+          margin-right: auto;
+        }
       }
     `,
   ];

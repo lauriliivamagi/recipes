@@ -20,7 +20,7 @@ export class ServingsAdjuster extends LitElement {
       }
 
       label {
-        font-size: 0.85rem;
+        font-size: var(--text-sm);
         color: var(--text-dim);
         font-weight: 500;
       }
