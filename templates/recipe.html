@@ -614,6 +614,50 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* === STEP TRANSITIONS (View Transitions API) === */
+#focusArea { view-transition-name: focus-area; }
+
+/* Suppress fade-in when View Transitions handles animation */
+@supports (view-transition-name: none) {
+  .focus-card.fade-in,
+  .next-preview.fade-in { animation: none; }
+}
+
+/* Disable default root crossfade — only animate focus-area */
+::view-transition-old(root),
+::view-transition-new(root) { animation: none; }
+
+::view-transition-group(focus-area) { overflow: clip; }
+
+/* Forward (Next): slide left */
+/* Old snapshot: hide instantly */
+::view-transition-old(focus-area) {
+  animation: none;
+  display: none;
+}
+
+/* Forward (Next): new slides in from right */
+html[data-step-direction="forward"]::view-transition-new(focus-area) {
+  animation: slideInRight 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Backward (Back): new slides in from left */
+html[data-step-direction="backward"]::view-transition-new(focus-area) {
+  animation: slideInLeft 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(100px); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-100px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(focus-area),
+  ::view-transition-new(focus-area) { animation: none; }
+}
+
 /* === WAKE LOCK INDICATOR === */
 .wake-lock-indicator {
   position: fixed;
@@ -2057,8 +2101,19 @@ actor.subscribe((snapshot) => {
 
   // Step changed
   if (currView === 'cooking' && prevCtx.currentStep !== ctx.currentStep) {
-    renderFocusArea(ctx);
-    renderNavButtons(ctx);
+    var direction = ctx.currentStep > prevCtx.currentStep ? 'forward' : 'backward';
+    document.documentElement.dataset.stepDirection = direction;
+
+    var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (document.startViewTransition && !prefersReducedMotion && !restoringState) {
+      document.startViewTransition(function() {
+        renderFocusArea(ctx);
+        renderNavButtons(ctx);
+      });
+    } else {
+      renderFocusArea(ctx);
+      renderNavButtons(ctx);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -2149,7 +2204,8 @@ document.addEventListener('touchend', function(e) {
    =================================================================== */
 actor.start();
 
-// Restore saved state
+// Restore saved state — suppress view transitions during restoration
+var restoringState = true;
 var saved = loadState();
 if (saved) {
   if (saved.mode && saved.mode !== 'relaxed') {
@@ -2180,6 +2236,7 @@ if (saved) {
     });
   }
 }
+restoringState = false;
 
 // Initial full render
 const initial = actor.getSnapshot();
