@@ -44,3 +44,7 @@ coverage/
 # MCP tool state
 .firecrawl
 .playwright-mcp
+
+tmp/
+docs/scenarios/
+docs/strategy/

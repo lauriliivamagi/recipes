@@ -48,6 +48,10 @@ export class AwarenessBar extends LitElement {
         animation: none;
       }
 
+      .awareness-pill.urgent {
+        animation: pillPulse 1s ease-in-out infinite;
+      }
+
       @keyframes pillPulse {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.8; }
@@ -62,11 +66,15 @@ export class AwarenessBar extends LitElement {
 
     return html`
       <div class="awareness-bar">
-        ${this.timers.map(t => html`
-          <span class="awareness-pill ${t.remaining <= 0 ? 'done' : ''}">
-            ${t.action} \u2014 ${t.remaining > 0 ? formatTime(t.remaining) : 'Done!'}
-          </span>
-        `)}
+        ${this.timers.map(t => {
+          const done = t.remaining <= 0;
+          const urgent = !done && t.remaining <= 60;
+          return html`
+            <span class="awareness-pill ${done ? 'done' : ''} ${urgent ? 'urgent' : ''}">
+              ${t.action} \u2014 ${done ? 'Done!' : formatTime(t.remaining)}
+            </span>
+          `;
+        })}
       </div>
     `;
   }

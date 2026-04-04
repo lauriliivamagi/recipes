@@ -1,41 +1,40 @@
-// Recipe Visualizer Service Worker — v1
-// Strategy: stale-while-revalidate (per Frontend Masters PWA course pattern)
+// Recipe Visualizer Service Worker — v2
+// Strategy: stale-while-revalidate
 
-const CACHE_NAME = 'recipes-v1';
+const CACHE_NAME = 'recipes-v2';
 const PRECACHE = ['./index.html', './app.webmanifest', './icon.svg', './icon-512.png', './icon-maskable.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(PRECACHE);
-    })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE))
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-// Stale while revalidate: serve cached version immediately,
-// fetch update in background for next visit
 self.addEventListener('fetch', event => {
+  if (!event.request.url.startsWith('http')) return;
+
   event.respondWith(
-    caches.match(event.request).then(cachedResponse => {
-      const fetchPromise = fetch(event.request).then(networkResponse => {
-        caches.open(CACHE_NAME).then(cache => {
-          cache.put(event.request, networkResponse.clone());
-        });
-        return networkResponse;
-      }).catch(() => {
-        // Network failed — return nothing (cachedResponse already returned if available)
-      });
-      // Return cached response immediately, or wait for network if not cached
-      return cachedResponse || fetchPromise;
-    })
+    caches.open(CACHE_NAME).then(cache =>
+      cache.match(event.request).then(cachedResponse => {
+        const networkFetch = fetch(event.request).then(networkResponse => {
+          if (networkResponse.ok) {
+            cache.put(event.request, networkResponse.clone());
+          }
+          return networkResponse;
+        }).catch(() => cachedResponse);
+
+        // Return cache immediately if available, otherwise wait for network
+        return cachedResponse || networkFetch;
+      })
+    )
   );
 });

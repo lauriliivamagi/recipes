@@ -43,6 +43,11 @@
   --space-sm: clamp(8px, 0.4rem + 0.5vw, 12px);
   --space-md: clamp(12px, 0.6rem + 0.75vw, 20px);
   --space-lg: clamp(16px, 0.8rem + 1vw, 28px);
+
+  /* Emotional state tokens */
+  --text-warm: #f0d9b5;
+  --text-celebrate: #ffd700;
+  --surface-complete: rgba(46, 204, 113, 0.1);
 }
 
 html { font-size: 16px; }
@@ -396,6 +401,9 @@ body {
   background: var(--success);
   animation: none;
 }
+.awareness-pill.urgent {
+  animation: pillPulse 1s ease-in-out infinite;
+}
 
 /* Focus card */
 .focus-card {
@@ -411,7 +419,49 @@ body {
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--accent-teal);
+  margin-bottom: 4px;
+}
+.progress-track {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
   margin-bottom: 8px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--accent-teal);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+.focus-hint {
+  font-size: var(--text-sm);
+  color: var(--text-warm);
+  font-style: italic;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+.completion-card {
+  margin: var(--space-lg) var(--space-md);
+  padding: var(--space-lg);
+  background: var(--surface-complete);
+  border-radius: var(--radius);
+  text-align: center;
+}
+.completion-icon {
+  font-size: 2.5rem;
+  color: var(--text-celebrate);
+  margin-bottom: 12px;
+}
+.completion-title {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+}
+.completion-subtitle {
+  font-size: var(--text-base);
+  color: var(--text-dim);
 }
 .sub-product-label {
   display: inline-block;
@@ -1194,7 +1244,7 @@ const recipeMachine = setup({
       };
     }),
     nextStep: assign({
-      currentStep: ({ context }) => Math.min(context.currentStep + 1, context.cookingSteps.length - 1),
+      currentStep: ({ context }) => Math.min(context.currentStep + 1, context.cookingSteps.length),
     }),
     prevStep: assign({
       currentStep: ({ context }) => Math.max(context.currentStep - 1, 0),
@@ -1740,6 +1790,30 @@ function renderFocusArea(ctx) {
     return;
   }
 
+  // Completion state: past the last step
+  if (ctx.currentStep >= totalSteps) {
+    var comp = document.createElement('div');
+    comp.className = 'completion-card fade-in';
+
+    var icon = document.createElement('div');
+    icon.className = 'completion-icon';
+    icon.textContent = '\u2713';
+    comp.appendChild(icon);
+
+    var title = document.createElement('div');
+    title.className = 'completion-title';
+    title.textContent = 'Enjoy your meal';
+    comp.appendChild(title);
+
+    var subtitle = document.createElement('div');
+    subtitle.className = 'completion-subtitle';
+    subtitle.textContent = RECIPE.meta.title + ' \u2014 done in ' + totalSteps + ' steps';
+    comp.appendChild(subtitle);
+
+    focusArea.appendChild(comp);
+    return;
+  }
+
   var step = ctx.cookingSteps[ctx.currentStep];
 
   // Context banner: passive op running in background (e.g. simmer)
@@ -1748,12 +1822,12 @@ function renderFocusArea(ctx) {
   }
 
   if (step.type === 'parallel') {
-    focusArea.appendChild(buildFocusCard(step.primary, ctx.currentStep, totalSteps, ctx, scaleFactor));
+    focusArea.appendChild(buildFocusCard(step.primary, ctx.currentStep, totalSteps, ctx, scaleFactor, step.context));
     step.secondary.forEach(function(sec) {
       focusArea.appendChild(buildSecondaryTask(sec, scaleFactor));
     });
   } else {
-    focusArea.appendChild(buildFocusCard(step.op, ctx.currentStep, totalSteps, ctx, scaleFactor));
+    focusArea.appendChild(buildFocusCard(step.op, ctx.currentStep, totalSteps, ctx, scaleFactor, step.context));
   }
 
   // Next-up preview
@@ -1779,7 +1853,7 @@ function renderFocusArea(ctx) {
   }
 }
 
-function buildFocusCard(op, stepIdx, totalSteps, ctx, scaleFactor) {
+function buildFocusCard(op, stepIdx, totalSteps, ctx, scaleFactor, contextOp) {
   var desc = op.id ? buildOpDescription(op, scaleFactor) : esc(op.details || '');
   var time = op.time ? scaleTime(op, scaleFactor) : null;
   // Show timer only for steps with passive waiting time (activeTime < time),
@@ -1793,6 +1867,14 @@ function buildFocusCard(op, stepIdx, totalSteps, ctx, scaleFactor) {
   counter.className = 'step-counter';
   counter.textContent = I18N.labels.step + ' ' + (stepIdx + 1) + ' ' + I18N.labels.of + ' ' + totalSteps;
   card.appendChild(counter);
+
+  var progressTrack = document.createElement('div');
+  progressTrack.className = 'progress-track';
+  var progressFill = document.createElement('div');
+  progressFill.className = 'progress-fill';
+  progressFill.style.width = ((stepIdx + 1) / totalSteps * 100) + '%';
+  progressTrack.appendChild(progressFill);
+  card.appendChild(progressTrack);
 
   // Show which sub-product this step contributes to
   var spName = op.id ? OP_SUB_PRODUCT[op.id] : null;
@@ -1810,9 +1892,26 @@ function buildFocusCard(op, stepIdx, totalSteps, ctx, scaleFactor) {
 
   var details = document.createElement('div');
   details.className = 'focus-details';
-  /* desc contains pre-escaped text with <span class="qty"> for bold ingredient quantities */
+  /* desc contains pre-escaped text with <span class="qty"> for bold ingredient quantities.
+     All values are from trusted recipe JSON sources processed by the esc() function. */
   details.innerHTML = desc;
   card.appendChild(details);
+
+  // Contextual hint for passive/background steps
+  if (op.time && op.activeTime != null && op.activeTime < op.time) {
+    var idleMin = Math.round(op.time - op.activeTime);
+    if (idleMin > 0) {
+      var hint = document.createElement('div');
+      hint.className = 'focus-hint';
+      hint.textContent = idleMin + ' minutes of hands-free time.';
+      card.appendChild(hint);
+    }
+  } else if (contextOp) {
+    var hint2 = document.createElement('div');
+    hint2.className = 'focus-hint';
+    hint2.textContent = 'Meanwhile, ' + capitalize(contextOp.action) + ' is running in the background.';
+    card.appendChild(hint2);
+  }
 
   var tags = document.createElement('div');
   tags.className = 'focus-tags';
@@ -1963,10 +2062,14 @@ function renderNavButtons(ctx) {
 
   var nextBtn = document.createElement('button');
   nextBtn.className = 'nav-btn nav-btn-next';
-  nextBtn.textContent = I18N.nav.next + ' \u2192';
-  nextBtn.disabled = ctx.currentStep >= totalSteps - 1;
-  nextBtn.setAttribute('aria-label', I18N.nav.next + ' \u2014 ' + I18N.labels.step + ' ' + (ctx.currentStep + 2));
+  var isComplete = ctx.currentStep >= totalSteps;
+  var isLast = ctx.currentStep >= totalSteps - 1;
+  var isAlmostDone = ctx.currentStep === totalSteps - 2 && totalSteps > 2;
+  var nextText = isComplete ? (I18N.nav.finish || 'Finish') : isLast ? (I18N.nav.finish || 'Finish') : isAlmostDone ? 'Almost done' : I18N.nav.next;
+  nextBtn.textContent = nextText + ' \u2192';
+  nextBtn.disabled = isComplete;
   nextBtn.addEventListener('click', function() { actor.send({ type: 'NEXT_STEP' }); });
+  nextBtn.setAttribute('aria-label', nextText + ' \u2014 ' + I18N.labels.step + ' ' + (ctx.currentStep + 2));
   nav.appendChild(nextBtn);
 }
 
@@ -1983,7 +2086,8 @@ function renderAwareness(ctx) {
     var label = op ? capitalize(op.action) : capitalize(opId);
 
     var pill = document.createElement('span');
-    pill.className = 'awareness-pill' + (t.done ? ' done' : '');
+    var urgent = !t.done && t.remaining <= 60;
+    pill.className = 'awareness-pill' + (t.done ? ' done' : '') + (urgent ? ' urgent' : '');
     pill.addEventListener('click', function() { actor.send({ type: 'CANCEL_TIMER', opId: opId }); });
 
     if (t.done) {
@@ -2280,8 +2384,8 @@ if (initialView === 'overview') {
   $('#navButtons').style.display = 'flex';
 }
 
-// Service Worker registration
-if ('serviceWorker' in navigator) {
+// Service Worker registration (skip Vite dev server to avoid caching HMR assets)
+if ('serviceWorker' in navigator && location.port !== '5173') {
   navigator.serviceWorker.register('{{SW_PATH}}');
 }
 </script>

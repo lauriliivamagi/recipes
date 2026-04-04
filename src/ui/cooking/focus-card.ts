@@ -70,6 +70,14 @@ export class FocusCard extends LitElement {
 
       .focus-tag .icon { font-size: 0.9rem; }
 
+      .focus-hint {
+        font-size: var(--text-sm);
+        color: var(--text-warm, var(--text-dim));
+        font-style: italic;
+        margin-bottom: 12px;
+        line-height: 1.5;
+      }
+
       .focus-tag.heat {
         background: rgba(244, 162, 97, 0.15);
         color: var(--accent-orange);
@@ -86,9 +94,28 @@ export class FocusCard extends LitElement {
   @property({ type: Object }) accessor operation: Operation | FinishStep | null = null;
   @property({ type: Number }) accessor scaleFactor = 1;
   @property({ type: Array }) accessor ingredients: Ingredient[] = [];
+  @property({ type: Boolean }) accessor isPassive = false;
+  @property({ type: String }) accessor contextAction = '';
 
   private _isOperation(op: Operation | FinishStep): op is Operation {
     return 'id' in op;
+  }
+
+  private _renderHint(op: Operation | null) {
+    if (!op) return nothing;
+
+    if (this.isPassive && op.time > 0) {
+      const idleMin = op.time - (op.activeTime ?? op.time);
+      if (idleMin > 0) {
+        return html`<div class="focus-hint">${idleMin} minutes of hands-free time.</div>`;
+      }
+    }
+
+    if (this.contextAction) {
+      return html`<div class="focus-hint">Meanwhile, ${this.contextAction} is running in the background.</div>`;
+    }
+
+    return nothing;
   }
 
   override render() {
@@ -119,6 +146,8 @@ export class FocusCard extends LitElement {
         ` : nothing}
 
         ${details ? html`<div class="focus-details">${details}</div>` : nothing}
+
+        ${this._renderHint(isOp ? op as Operation : null)}
 
         <div class="focus-tags">
           ${heat ? html`

@@ -367,8 +367,8 @@
     renderGrid();
   })();
 
-  // Service Worker registration
-  if ('serviceWorker' in navigator) {
+  // Service Worker registration (skip Vite dev server to avoid caching HMR assets)
+  if ('serviceWorker' in navigator && location.port !== '5173') {
     navigator.serviceWorker.register('{{SW_PATH}}');
   }
 </script>

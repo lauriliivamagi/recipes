@@ -28,6 +28,10 @@ export const designTokens = css`
     --space-sm: clamp(8px, 0.4rem + 0.5vw, 12px);
     --space-md: clamp(12px, 0.6rem + 0.75vw, 20px);
     --space-lg: clamp(16px, 0.8rem + 1vw, 28px);
+    --text-warm: #f0d9b5;
+    --text-celebrate: #ffd700;
+    --surface-progress: rgba(78, 205, 196, 0.08);
+    --surface-complete: rgba(46, 204, 113, 0.1);
   }
 `;
 

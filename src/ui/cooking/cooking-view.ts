@@ -92,10 +92,51 @@ export class CookingView extends LitElement {
         padding: var(--space-sm) var(--space-md) 0;
       }
 
+      .progress-track {
+        height: 3px;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 2px;
+        margin: 6px var(--space-md) 0;
+        overflow: hidden;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: var(--accent-teal);
+        border-radius: 2px;
+        transition: width 0.3s ease;
+      }
+
       .timer-row {
         display: flex;
         justify-content: center;
         padding: 0 var(--space-md) var(--space-sm);
+      }
+
+      .completion-card {
+        margin: var(--space-lg) var(--space-md);
+        padding: var(--space-lg);
+        background: var(--surface-complete);
+        border-radius: var(--radius);
+        text-align: center;
+      }
+
+      .completion-icon {
+        font-size: 2.5rem;
+        color: var(--text-celebrate);
+        margin-bottom: 12px;
+      }
+
+      .completion-title {
+        font-size: var(--text-xl);
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 8px;
+      }
+
+      .completion-subtitle {
+        font-size: var(--text-base);
+        color: var(--text-dim);
       }
 
       .fade-in {
@@ -148,16 +189,48 @@ export class CookingView extends LitElement {
   override render() {
     if (this._steps.length === 0) return nothing;
 
-    const idx = Math.max(0, Math.min(this.currentStep, this._steps.length - 1));
+    const total = this._steps.length;
+    const isComplete = this.currentStep >= total;
+
+    if (isComplete) {
+      const title = this.recipe?.meta?.title ?? 'Your meal';
+      return html`
+        <div class="cooking-content fade-in">
+          <div class="step-counter">
+            Step ${total} of ${total}
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width: 100%"></div>
+          </div>
+          <div class="completion-card">
+            <div class="completion-icon">&#10003;</div>
+            <div class="completion-title">Enjoy your meal</div>
+            <div class="completion-subtitle">${title} — done in ${total} steps</div>
+          </div>
+        </div>
+        <nav-buttons
+          .currentStep=${total}
+          .totalSteps=${total}
+          .backLabel=${this.i18n?.back ?? 'Back'}
+          .nextLabel=${this.i18n?.next ?? 'Next'}
+        ></nav-buttons>
+      `;
+    }
+
+    const idx = Math.max(0, Math.min(this.currentStep, total - 1));
     const step = this._steps[idx]!;
     const op = step.op;
     const isOp = this._isOperation(op);
     const hasTime = isOp && op.time > 0;
     const ingredients = this._getIngredients(op);
+    const progressPct = ((idx + 1) / total) * 100;
 
     const timerForOp = isOp
       ? this.activeTimers.find(t => t.opId === op.id)
       : undefined;
+
+    const isPassive = isOp && op.time > 0 && op.activeTime !== undefined && op.activeTime < op.time;
+    const contextAction = step.contextOp?.action ?? '';
 
     return html`
       <awareness-bar .timers=${this.activeTimers}></awareness-bar>
@@ -168,13 +241,18 @@ export class CookingView extends LitElement {
 
       <div class="cooking-content fade-in">
         <div class="step-counter">
-          Step ${idx + 1} of ${this._steps.length}
+          Step ${idx + 1} of ${total}
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width: ${progressPct}%"></div>
         </div>
 
         <focus-card
           .operation=${op}
           .scaleFactor=${this.scaleFactor}
           .ingredients=${ingredients}
+          .isPassive=${isPassive}
+          .contextAction=${contextAction}
         ></focus-card>
 
         ${hasTime ? html`
@@ -198,7 +276,7 @@ export class CookingView extends LitElement {
 
       <nav-buttons
         .currentStep=${idx}
-        .totalSteps=${this._steps.length}
+        .totalSteps=${total}
         .backLabel=${this.i18n?.back ?? 'Back'}
         .nextLabel=${this.i18n?.next ?? 'Next'}
       ></nav-buttons>

@@ -101,6 +101,9 @@ export class NavButtons extends LitElement {
   override render() {
     const isFirst = this.currentStep <= 0;
     const isLast = this.currentStep >= this.totalSteps - 1;
+    const isAlmostDone = this.currentStep === this.totalSteps - 2 && this.totalSteps > 2;
+
+    const nextText = isLast ? 'Finish' : isAlmostDone ? 'Almost done' : this.nextLabel;
 
     return html`
       <div class="nav-buttons">
@@ -113,9 +116,10 @@ export class NavButtons extends LitElement {
         </button>
         <button
           class="nav-btn nav-btn-next"
+          ?disabled=${this.currentStep >= this.totalSteps}
           @click=${this._handleNext}
         >
-          ${isLast ? 'Finish' : this.nextLabel} &rarr;
+          ${nextText} &rarr;
         </button>
       </div>
     `;

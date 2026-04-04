@@ -162,44 +162,62 @@ export function recipesPlugin(): Plugin {
         }
       });
 
-      // Return a post-hook to add middleware after Vite's built-in middleware
-      return () => {
-        server.middlewares.use(
-          (
-            req: IncomingMessage,
-            res: ServerResponse,
-            next: () => void,
-          ) => {
-            const reqUrl = req.url ?? '/';
-            const stripped = reqUrl.replace(/^\//, '');
-
-            if (stripped === '' || stripped === 'index.html') {
-              const html = renderIndex();
-              server
-                .transformIndexHtml(reqUrl, html)
-                .then((transformed) => {
-                  res.setHeader('Content-Type', 'text/html');
-                  res.end(transformed);
-                });
-              return;
-            }
-
-            const recipeData = recipeDataMap.get(stripped);
-            if (recipeData) {
-              const html = renderRecipe(recipeData);
-              server
-                .transformIndexHtml(reqUrl, html)
-                .then((transformed) => {
-                  res.setHeader('Content-Type', 'text/html');
-                  res.end(transformed);
-                });
-              return;
-            }
-
-            next();
-          },
-        );
+      // Pre-hook: serve all generated pages and static assets before
+      // Vite's built-in SPA fallback can intercept them
+      const staticMimeTypes: Record<string, string> = {
+        'app.webmanifest': 'application/manifest+json',
+        'sw.js': 'application/javascript',
+        'icon.svg': 'image/svg+xml',
+        'icon-512.png': 'image/png',
+        'icon-maskable.png': 'image/png',
       };
+      server.middlewares.use(
+        (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+          const reqUrl = req.url ?? '/';
+          const stripped = reqUrl.replace(/^\//, '').split('?')[0]!;
+
+          // Serve static PWA assets from templates/ at any path depth
+          const basename = stripped.split('/').pop() ?? '';
+          if (basename in staticMimeTypes) {
+            const filePath = join(templatesDir, basename);
+            try {
+              const content = readFileSync(filePath);
+              res.setHeader('Content-Type', staticMimeTypes[basename]!);
+              res.end(content);
+              return;
+            } catch {
+              // File doesn't exist in templates, fall through
+            }
+          }
+
+          // Serve index page
+          if (stripped === '' || stripped === 'index.html') {
+            const html = renderIndex();
+            server
+              .transformIndexHtml(reqUrl, html)
+              .then((transformed) => {
+                res.setHeader('Content-Type', 'text/html');
+                res.end(transformed);
+              });
+            return;
+          }
+
+          // Serve recipe pages
+          const recipeData = recipeDataMap.get(stripped);
+          if (recipeData) {
+            const html = renderRecipe(recipeData);
+            server
+              .transformIndexHtml(reqUrl, html)
+              .then((transformed) => {
+                res.setHeader('Content-Type', 'text/html');
+                res.end(transformed);
+              });
+            return;
+          }
+
+          next();
+        },
+      );
     },
 
     generateBundle(_, bundle) {
