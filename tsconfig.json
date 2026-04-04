@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "lit",
+    "paths": {
+      "@domain/*": ["./src/domain/*"],
+      "@ui/*": ["./src/ui/*"],
+      "@build/*": ["./src/build/*"]
+    },
+    "types": ["vitest/globals"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "site", "e2e"]
+}

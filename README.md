@@ -1,6 +1,8 @@
 ![Build](https://github.com/lauriliivamagi/recipes/actions/workflows/deploy.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-22%2B-brightgreen)
-![Dependencies](https://img.shields.io/badge/dependencies-0-blue)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
+![Lit](https://img.shields.io/badge/Lit-v3-blue)
+![Vite](https://img.shields.io/badge/Vite-v8-646CFF)
 ![PWA](https://img.shields.io/badge/PWA-ready-purple)
 
 # Recipe Visualizer
@@ -84,33 +86,45 @@ In **optimized mode**, the app tells you: *"The sauce is simmering. You have 27 
 ```bash
 git clone https://github.com/lauriliivamagi/recipes.git
 cd recipes
+npm install
 npm run build
 ```
 
-Open `site/index.html` in your browser. That's it.
+Open `site/index.html` in your browser, or run `npm run dev` for live development with hot reload.
 
-No `npm install`. No dependencies. No server. The build script is a single Node.js file that reads JSON, computes schedules, and writes static HTML.
-
-> **Requires** Node.js 22+ (ES modules).
+> **Requires** Node.js 22+.
 
 ## Architecture
 
+The codebase uses **vertical slice architecture** with domain-driven design. Each domain concern is a self-contained slice with its own types, logic, and tests.
+
 ```
-  Recipe JSON             Build Pipeline                 Output
-  ───────────             ──────────────                 ──────
-  recipes/                lib/recipe-build.js            site/
-  └─ italian/             ├─ reads recipe JSON           ├─ index.html
-     ├─ spaghetti-        ├─ validates DAG               ├─ italian/
-     │  bolognese.json    ├─ computes both schedules     │  ├─ spaghetti-bolognese.html
-     └─ classic-          └─ injects into HTML template  │  └─ classic-lasagne.html
-        lasagne.json                                     ├─ app.webmanifest
-                          lib/recipe-optimize.js         └─ sw.js
-                          ├─ Kahn's topological sort
-                          ├─ critical path (longest-path DP)
-                          └─ greedy idle-window packing
+  Recipe JSON             Vite Build Pipeline            Output
+  ───────────             ──────────────────             ──────
+  recipes/                src/build/                     site/
+  └─ italian/               vite-plugin-recipes.ts       ├─ index.html
+     ├─ spaghetti-          ├─ reads recipe JSON         ├─ italian/
+     │  bolognese.json      ├─ validates DAG             │  ├─ spaghetti-bolognese.html
+     └─ classic-            ├─ computes schedules        │  └─ classic-lasagne.html
+        lasagne.json        └─ injects into HTML         ├─ assets/*.js (bundled Lit)
+                                                         ├─ app.webmanifest
+  src/domain/             src/ui/                        └─ sw.js
+  ├─ recipe/              ├─ catalog/
+  ├─ schedule/            ├─ recipe/
+  ├─ scaling/             ├─ overview/
+  ├─ catalog/             ├─ cooking/
+  └─ cooking/             └─ state/
 ```
 
-Recipe pages use an **XState v5** state machine to drive the cooking flow: mode switching, step navigation, timers, and wake lock.
+**Domain slices** (pure TypeScript, no DOM dependencies):
+
+- `recipe/` — types, Zod schema, parser, ingredient resolution
+- `schedule/` — DAG validation, toposort, critical path, relaxed/optimized scheduling
+- `scaling/` — unit conversion, temperature, rounding, serving scaling
+- `catalog/` — recipe search and tag filtering
+- `cooking/` — step navigation, timer lifecycle
+
+**UI layer** — Lit v3 web components with XState v5 state machine for the cooking flow.
 
 ## Recipe data format
 
@@ -216,6 +230,21 @@ Tags are freeform, but the app recognizes these categories from [`config/tags.js
 ## Project structure
 
 ```
+src/
+  domain/                 Pure TypeScript domain logic (no DOM)
+    recipe/               types, Zod schema, parser, ingredient resolution
+    schedule/             DAG validation, toposort, critical path, scheduling
+    scaling/              unit conversion, rounding, serving scaling
+    catalog/              search and tag filtering
+    cooking/              step navigation, timer lifecycle
+  ui/                     Lit v3 web components
+    catalog/              <catalog-page>, <search-bar>, <tag-filters>, <recipe-card>
+    recipe/               <recipe-page>, <recipe-header>, <servings-adjuster>, <view-tabs>
+    overview/             <overview-view>, <mode-toggle>, <equipment-summary>, <phase-card>
+    cooking/              <cooking-view>, <focus-card>, <timer-button>, <nav-buttons>
+    state/                XState v5 machine, wake lock, audio, persistence
+  build/                  Vite plugin and i18n loader
+  entries/                Browser entry points (catalog.ts, recipe.ts)
 recipes/                  JSON recipe sources, organized by cuisine
 config/
   ├─ recipe-schema.json   JSON Schema (draft 2020-12) for recipe validation
@@ -223,19 +252,11 @@ config/
   ├─ ingredient-densities.json  volume-to-weight (g per cup) for scaling
   ├─ tags.json            suggested tag taxonomy
   └─ preferences.json     default servings, language, dietary preferences
-lib/
-  ├─ recipe-build.js      reads JSON, computes schedules, writes HTML
-  ├─ recipe-optimize.js   DAG validator, scheduler, critical path solver
-  └─ unit-convert.js      unit normalization to metric
-templates/
-  ├─ recipe.html          interactive recipe page (XState v5 state machine)
-  ├─ index.html           recipe browser with search and tag filters
-  ├─ sw.js                service worker (stale-while-revalidate)
-  ├─ app.webmanifest      PWA manifest
-  └─ i18n/                language packs (en.json, et.json)
+templates/                HTML shells + PWA assets + i18n language packs
+e2e/                      Playwright E2E tests
 site/                     built output (deployed via CI)
 .github/workflows/
-  └─ deploy.yml           GitHub Actions → GitHub Pages
+  └─ deploy.yml           GitHub Actions → GitHub Pages (test + deploy)
 .claude-plugin/           Claude Code integration (commands + skills)
 ```
 
@@ -243,17 +264,19 @@ site/                     built output (deployed via CI)
 
 | Layer | Technology |
 |-------|-----------|
-| Data | JSON with JSON Schema validation |
-| Build | Node.js ES modules, no npm packages |
+| Language | TypeScript (strict mode) |
+| Build | Vite 8 with custom recipe plugin |
+| UI | Lit v3 web components |
+| State | XState v5 state machine |
+| Data | JSON with Zod validation |
 | Optimizer | Custom DAG scheduler (topological sort, critical path DP, greedy packing) |
-| Frontend | Vanilla JS + XState v5 state machine |
-| Styling | CSS custom properties, `clamp()` fluid typography, responsive grid |
-| PWA | Service worker, web app manifest, Wake Lock API |
+| Styling | CSS custom properties, `clamp()` fluid typography, scoped component styles |
+| PWA | Service worker (stale-while-revalidate), web app manifest, Wake Lock API |
+| Unit tests | Vitest (74 tests) |
+| E2E tests | Playwright (20 tests) |
 | i18n | JSON string bundles with deep-merge fallback |
 | CI/CD | GitHub Actions → GitHub Pages |
 | AI tooling | Claude Code plugin for recipe parsing and import |
-
-No React. No Tailwind. No webpack. Three JS files, no npm packages. Each recipe page is a self-contained HTML file.
 
 ## Roadmap
 
@@ -265,6 +288,44 @@ No React. No Tailwind. No webpack. Three JS files, no npm packages. Each recipe 
 - [ ] Voice control for hands-free step navigation
 - [ ] Equipment timeline (Gantt chart showing pan/oven utilization)
 - [ ] Recipe sharing via QR codes
+
+## Contributing
+
+Contributions are welcome. The codebase is organized as vertical slices so you can work on one area without understanding the whole system.
+
+### Setup
+
+```bash
+git clone https://github.com/lauriliivamagi/recipes.git
+cd recipes
+npm install
+```
+
+### Development workflow
+
+```bash
+npm run dev          # Vite dev server with hot reload
+npm run typecheck    # TypeScript strict mode check
+npm test             # Vitest unit tests (74 tests)
+npm run test:e2e     # Playwright E2E tests (20 tests, requires npm run build first)
+npm run build        # Production build to site/
+npm run preview      # Serve production build locally
+```
+
+### Where to contribute
+
+- **Add recipes** — Create `recipes/<cuisine>/<slug>.json` following the schema. See [spaghetti-bolognese.json](recipes/italian/spaghetti-bolognese.json) as a template.
+- **Add a language** — Copy `templates/i18n/en.json` to `templates/i18n/<code>.json` and translate the strings.
+- **Domain logic** — Pure TypeScript in `src/domain/`. Each slice has co-located `.test.ts` files. Run `npm test` to verify.
+- **UI components** — Lit web components in `src/ui/`. Each component is a self-contained `.ts` file with scoped styles.
+- **E2E tests** — Playwright specs in `e2e/`. Run `npm run build && npm run test:e2e`.
+
+### Code conventions
+
+- Domain modules have **zero DOM dependencies** — they work in both Node.js and the browser.
+- Unit tests are **co-located** with source files (`foo.ts` has `foo.test.ts` next to it).
+- Imports use **`.js` extensions** (TypeScript + ES modules convention for Vite).
+- CSS uses the **design tokens** defined in `src/ui/shared/styles.ts`.
 
 ## License
 

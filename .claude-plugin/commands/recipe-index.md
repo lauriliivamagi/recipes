@@ -12,7 +12,7 @@ Regenerate the browsable index page from all recipes.
 Run the build script in index-only mode:
 
 ```bash
-node ${CLAUDE_PROJECT_DIR}/lib/recipe-build.js --index-only
+cd ${CLAUDE_PROJECT_DIR} && npm run build
 ```
 
 This scans all `recipes/**/*.json` files and generates `site/index.html` — a browsable index with:

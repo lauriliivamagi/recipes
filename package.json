@@ -1,11 +1,30 @@
 {
   "name": "recipes",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node lib/recipe-build.js",
-    "build:recipe": "node lib/recipe-build.js --slug",
-    "build:index": "node lib/recipe-build.js --index-only"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "build:legacy": "node lib/recipe-build.js"
+  },
+  "dependencies": {
+    "lit": "^3.3.2",
+    "xstate": "^5.30.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^25.5.2",
+    "@vitest/coverage-v8": "^4.1.2",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.3",
+    "vitest": "^4.1.2"
   }
 }

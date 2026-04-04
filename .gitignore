@@ -33,6 +33,14 @@ Thumbs.db
 .prettierrc
 .dockerignore
 
+# Test output
+playwright-report/
+test-results/
+coverage/
+
+# Vite cache
+.vite/
+
 # MCP tool state
 .firecrawl
 .playwright-mcp

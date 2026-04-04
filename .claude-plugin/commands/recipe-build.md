@@ -18,7 +18,7 @@ Generate self-contained interactive HTML from recipe JSON files.
 Build a single recipe:
 
 ```bash
-node ${CLAUDE_PROJECT_DIR}/lib/recipe-build.js --slug <slug>
+cd ${CLAUDE_PROJECT_DIR} && npm run build
 ```
 
 This reads `recipes/<slug>.json`, applies the HTML template from `templates/recipe.html`, loads the appropriate i18n strings from `templates/i18n/<language>.json`, and writes the output to `site/<slug>.html`.
@@ -28,7 +28,7 @@ This reads `recipes/<slug>.json`, applies the HTML template from `templates/reci
 Build all recipes:
 
 ```bash
-node ${CLAUDE_PROJECT_DIR}/lib/recipe-build.js
+cd ${CLAUDE_PROJECT_DIR} && npm run build
 ```
 
 This scans `recipes/` recursively for all `.json` files, builds each one, and regenerates the index page at `site/index.html`.

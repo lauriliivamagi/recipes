@@ -1,0 +1,70 @@
+import { LitElement, html, css, nothing } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
+import { designTokens, resetStyles, baseStyles } from '../shared/styles.js';
+import type { Operation } from '../../domain/recipe/types.js';
+
+@customElement('context-banner')
+export class ContextBanner extends LitElement {
+  static override styles = [
+    designTokens,
+    resetStyles,
+    baseStyles,
+    css`
+      :host { display: block; }
+
+      .context-banner {
+        margin: 0 var(--space-md) var(--space-sm);
+        padding: 12px 16px;
+        background: var(--accent-purple);
+        border-radius: var(--radius);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .context-banner-text {
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: #fff;
+      }
+
+      .context-banner-sub {
+        font-size: var(--text-xs);
+        color: rgba(255, 255, 255, 0.7);
+      }
+    `,
+  ];
+
+  @property({ type: Object }) accessor operation: Operation | null = null;
+
+  private _formatTime(minutes: number): string {
+    if (minutes < 60) return `${minutes} min`;
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+
+  override render() {
+    if (!this.operation) return nothing;
+
+    const op = this.operation;
+    const timeLabel = op.time > 0 ? ` \u2014 ${this._formatTime(op.time)}` : '';
+
+    return html`
+      <div class="context-banner">
+        <div>
+          <div class="context-banner-text">${op.action}${timeLabel}</div>
+          ${op.details ? html`<div class="context-banner-sub">${op.details}</div>` : nothing}
+        </div>
+      </div>
+    `;
+  }
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'context-banner': ContextBanner;
+  }
+}

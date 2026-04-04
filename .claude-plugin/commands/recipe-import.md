@@ -102,7 +102,7 @@ Determine the category and slug:
 Automatically run the build to generate the HTML view:
 
 ```bash
-node ${CLAUDE_PROJECT_DIR}/lib/recipe-build.js --slug <category>/<slug>
+cd ${CLAUDE_PROJECT_DIR} && npm run build
 ```
 
 If the build script is not yet available, inform the user they can run `/recipe-build <slug>` later.
