@@ -1,6 +1,6 @@
 {
   "name": "recipes",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,8 +12,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
-    "knip": "knip",
-    "build:legacy": "node lib/recipe-build.js"
+    "knip": "knip"
   },
   "dependencies": {
     "lit": "^3.3.2",
@@ -27,6 +26,7 @@
     "knip": "^6.3.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.3",
+    "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.1.2"
   }
 }

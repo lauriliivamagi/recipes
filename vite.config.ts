@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import { recipesPlugin } from './src/build/vite-plugin-recipes.js';
 
+import { VitePWA } from 'vite-plugin-pwa';
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -14,5 +16,29 @@ export default defineConfig({
     outDir: 'site',
     emptyOutDir: true,
   },
-  plugins: [recipesPlugin()],
+  plugins: [
+    recipesPlugin(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      injectRegister: null, // We manually register in our custom templates
+      manifest: {
+        name: "Recipe Visualizer",
+        short_name: "Recipes",
+        description: "Step-by-step cooking with timers and parallel task management",
+        start_url: "./",
+        scope: "./",
+        display: "standalone",
+        background_color: "#1a1a2e",
+        theme_color: "#1a1a2e",
+        icons: [
+          { src: "icon.svg", sizes: "any", type: "image/svg+xml" },
+          { src: "icon-512.png", sizes: "512x512", type: "image/png" },
+          { src: "icon-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" }
+        ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}']
+      }
+    })
+  ],
 });

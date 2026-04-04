@@ -101,24 +101,25 @@ export function recipesPlugin(): Plugin {
       .replace('{{RECIPES_JSON}}', JSON.stringify(recipeMetas))
       .replace('{{I18N_JSON}}', JSON.stringify(i18n))
       .replace(/\{\{VERSION\}\}/g, appVersion)
-      .replace(/\{\{MANIFEST_PATH\}\}/g, 'app.webmanifest')
+      .replace(/\{\{MANIFEST_PATH\}\}/g, 'manifest.webmanifest')
       .replace(/\{\{SW_PATH\}\}/g, 'sw.js')
       .replace(/\{\{ICON_PATH\}\}/g, 'icon-512.png')
       .replace(/\{\{FAVICON_PATH\}\}/g, 'icon.svg');
   }
 
-  function renderRecipe(data: RecipeData): string {
+  function renderRecipe(data: RecipeData, depth: number): string {
     const template = readFileSync(join(templatesDir, 'recipe.html'), 'utf8');
+    const prefix = depth === 0 ? './' : '../'.repeat(depth);
     return template
       .replace('{{RECIPE_JSON}}', JSON.stringify(data.recipe))
       .replace('{{I18N_JSON}}', JSON.stringify(data.i18n))
       .replace('{{SCHEDULE_RELAXED_JSON}}', JSON.stringify(data.relaxed))
       .replace('{{SCHEDULE_OPTIMIZED_JSON}}', JSON.stringify(data.optimized))
       .replace(/\{\{VERSION\}\}/g, appVersion)
-      .replace(/\{\{MANIFEST_PATH\}\}/g, '../app.webmanifest')
-      .replace(/\{\{SW_PATH\}\}/g, '../sw.js')
-      .replace(/\{\{ICON_PATH\}\}/g, '../icon-512.png')
-      .replace(/\{\{FAVICON_PATH\}\}/g, '../icon.svg');
+      .replace(/\{\{MANIFEST_PATH\}\}/g, `${prefix}manifest.webmanifest`)
+      .replace(/\{\{SW_PATH\}\}/g, `${prefix}sw.js`)
+      .replace(/\{\{ICON_PATH\}\}/g, `${prefix}icon-512.png`)
+      .replace(/\{\{FAVICON_PATH\}\}/g, `${prefix}icon.svg`);
   }
 
   return {
@@ -165,8 +166,6 @@ export function recipesPlugin(): Plugin {
       // Pre-hook: serve all generated pages and static assets before
       // Vite's built-in SPA fallback can intercept them
       const staticMimeTypes: Record<string, string> = {
-        'app.webmanifest': 'application/manifest+json',
-        'sw.js': 'application/javascript',
         'icon.svg': 'image/svg+xml',
         'icon-512.png': 'image/png',
         'icon-maskable.png': 'image/png',
@@ -205,7 +204,8 @@ export function recipesPlugin(): Plugin {
           // Serve recipe pages
           const recipeData = recipeDataMap.get(stripped);
           if (recipeData) {
-            const html = renderRecipe(recipeData);
+            const depth = stripped.split('/').length - 1;
+            const html = renderRecipe(recipeData, depth);
             server
               .transformIndexHtml(reqUrl, html)
               .then((transformed) => {
@@ -243,8 +243,8 @@ export function recipesPlugin(): Plugin {
       // Generate recipe HTML files with Lit component script
       for (const [url, data] of recipeDataMap) {
         const depth = url.split('/').length - 1;
-        const prefix = '../'.repeat(depth);
-        const html = renderRecipe(data)
+        const prefix = depth === 0 ? './' : '../'.repeat(depth);
+        const html = renderRecipe(data, depth)
           .replace('</body>', `<script type="module" src="${prefix}${recipeJs}"></script>\n</body>`);
         this.emitFile({
           type: 'asset',
@@ -255,8 +255,6 @@ export function recipesPlugin(): Plugin {
 
       // Copy static assets
       const staticAssets = [
-        'app.webmanifest',
-        'sw.js',
         'icon.svg',
         'icon-512.png',
         'icon-maskable.png',

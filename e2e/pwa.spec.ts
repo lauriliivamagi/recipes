@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('PWA', () => {
   test('manifest loads with correct fields', async ({ page }) => {
-    const response = await page.goto('/app.webmanifest');
+    const response = await page.goto('/manifest.webmanifest');
     expect(response?.status()).toBe(200);
     const manifest = await response?.json();
     expect(manifest.name).toBe('Recipe Visualizer');
