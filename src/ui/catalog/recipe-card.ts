@@ -12,6 +12,22 @@ export class RecipeCard extends LitElement {
     css`
       :host {
         display: block;
+        opacity: 1;
+        transform: translateY(0);
+        transition:
+          opacity 0.3s ease calc(var(--index, 0) * 50ms),
+          transform 0.3s ease calc(var(--index, 0) * 50ms);
+      }
+
+      @starting-style {
+        :host {
+          opacity: 0;
+          transform: translateY(1rem);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        :host { transition: none; }
       }
 
       a {

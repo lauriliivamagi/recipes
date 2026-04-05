@@ -1,9 +1,11 @@
-import { LitElement, html, css, nothing } from 'lit';
+import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { when } from 'lit/directives/when.js';
+import { createActor } from 'xstate';
 import { designTokens, resetStyles, baseStyles } from '../shared/styles.js';
-import { filterRecipes } from '../../domain/catalog/filter.js';
+import { catalogMachine } from '../state/catalog-machine.js';
+import { ActorController } from '../controllers/actor-controller.js';
 import type { CatalogRecipe } from '../../domain/catalog/types.js';
 
 import './search-bar.js';
@@ -90,24 +92,28 @@ export class CatalogPage extends LitElement {
     `,
   ];
 
-  @state() accessor _recipes: CatalogRecipe[] = [];
+  private _ctrl!: ActorController<typeof catalogMachine>;
 
   @state() accessor _labels: I18NLabels = {};
 
-  @state() accessor _query = '';
-
-  @state() accessor _activeTags: string[] = [];
-
   override connectedCallback() {
     super.connectedCallback();
-    this._recipes = (window as any).RECIPES ?? [];
+
+    const recipes: CatalogRecipe[] = (window as any).RECIPES ?? [];
     const i18n = (window as any).I18N ?? {};
     this._labels = i18n.labels ?? {};
+
+    const actor = createActor(catalogMachine, {
+      input: { recipes },
+    });
+
+    this._ctrl = new ActorController(this, actor);
+    actor.start();
   }
 
   private get _allTags(): string[] {
     const tagSet = new Set<string>();
-    for (const r of this._recipes) {
+    for (const r of this._ctrl.snapshot.context.recipes) {
       for (const t of r.tags ?? []) {
         tagSet.add(t);
       }
@@ -115,26 +121,19 @@ export class CatalogPage extends LitElement {
     return [...tagSet].sort();
   }
 
-  private get _filteredRecipes(): CatalogRecipe[] {
-    const filtered = filterRecipes(this._recipes, this._query, this._activeTags);
-    return filtered.sort((a, b) => (a.title ?? '').localeCompare(b.title ?? ''));
-  }
-
   private _onSearch(e: CustomEvent<string>) {
-    this._query = e.detail;
+    this._ctrl.send({ type: 'SEARCH', query: e.detail });
   }
 
   private _onTagToggle(e: CustomEvent<string>) {
-    const tag = e.detail;
-    if (this._activeTags.includes(tag)) {
-      this._activeTags = this._activeTags.filter((t) => t !== tag);
-    } else {
-      this._activeTags = [...this._activeTags, tag];
-    }
+    this._ctrl.send({ type: 'TAG_TOGGLE', tag: e.detail });
   }
 
   override render() {
-    const filtered = this._filteredRecipes;
+    if (!this._ctrl) return html``;
+
+    const ctx = this._ctrl.snapshot.context;
+    const filtered = ctx.filteredRecipes;
     const countLabel =
       filtered.length === 1 ? '1 recipe' : `${filtered.length} recipes`;
 
@@ -152,7 +151,7 @@ export class CatalogPage extends LitElement {
 
         <tag-filters
           .tags=${this._allTags}
-          .activeTags=${this._activeTags}
+          .activeTags=${ctx.activeTags}
           @tag-toggle=${this._onTagToggle}
         ></tag-filters>
 
@@ -165,7 +164,7 @@ export class CatalogPage extends LitElement {
             () => repeat(
               filtered,
               (r) => r.title,
-              (r) => html`<recipe-card .recipe=${r}></recipe-card>`,
+              (r, i) => html`<recipe-card .recipe=${r} style="--index: ${i}"></recipe-card>`,
             ),
           )}
         </div>

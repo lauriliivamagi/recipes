@@ -81,6 +81,16 @@ export class CookingView extends LitElement {
 
       .cooking-content {
         view-transition-name: focus-area;
+        opacity: 1;
+        transform: translateY(0);
+        transition: opacity 0.3s ease, transform 0.3s ease;
+      }
+
+      @starting-style {
+        .cooking-content {
+          opacity: 0;
+          transform: translateY(0.5rem);
+        }
       }
 
       .step-counter {
@@ -140,13 +150,22 @@ export class CookingView extends LitElement {
         color: var(--text-dim);
       }
 
-      .fade-in {
-        animation: fadeIn 0.2s ease;
+      .completion-card {
+        opacity: 1;
+        transform: scale(1);
+        transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
 
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(8px); }
-        to { opacity: 1; transform: translateY(0); }
+      @starting-style {
+        .completion-card {
+          opacity: 0;
+          transform: scale(0.95);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .cooking-content,
+        .completion-card { transition: none; }
       }
 
       @media (min-width: 600px) {
@@ -206,7 +225,7 @@ export class CookingView extends LitElement {
     if (isComplete) {
       const title = this.recipe?.meta?.title ?? 'Your meal';
       return html`
-        <div class="cooking-content fade-in">
+        <div class="cooking-content">
           <div class="step-counter">
             Step ${total} of ${total}
           </div>
@@ -250,7 +269,7 @@ export class CookingView extends LitElement {
         <context-banner .operation=${step.contextOp}></context-banner>
       ` : nothing}
 
-      <div class="cooking-content fade-in">
+      <div class="cooking-content">
         <div class="step-counter">
           Step ${idx + 1} of ${total}
         </div>

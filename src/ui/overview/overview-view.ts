@@ -16,13 +16,22 @@ export class OverviewView extends LitElement {
     css`
       :host { display: block; }
 
-      .fade-in {
-        animation: fadeIn 0.2s ease;
+      .overview-content {
+        opacity: 1;
+        transform: translateY(0);
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        view-transition-name: overview-content;
       }
 
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(8px); }
-        to { opacity: 1; transform: translateY(0); }
+      @starting-style {
+        .overview-content {
+          opacity: 0;
+          transform: translateY(0.5rem);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .overview-content { transition: none; }
       }
     `,
   ];
@@ -40,7 +49,7 @@ export class OverviewView extends LitElement {
     const equipmentLabel = this.i18n?.equipment ?? 'Equipment';
 
     return html`
-      <div class="fade-in">
+      <div class="overview-content">
         <mode-toggle
           .mode=${this.mode}
           .labels=${modeLabels}

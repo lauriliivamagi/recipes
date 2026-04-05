@@ -16,7 +16,25 @@ export class PhaseCard extends LitElement {
     resetStyles,
     baseStyles,
     css`
-      :host { display: block; }
+      :host {
+        display: block;
+        opacity: 1;
+        transform: translateY(0);
+        transition:
+          opacity 0.3s ease calc(var(--index, 0) * 60ms),
+          transform 0.3s ease calc(var(--index, 0) * 60ms);
+      }
+
+      @starting-style {
+        :host {
+          opacity: 0;
+          transform: translateY(1rem);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        :host { transition: none; }
+      }
 
       .phase-card {
         background: var(--card);

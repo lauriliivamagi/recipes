@@ -43,6 +43,7 @@ export class PhaseList extends LitElement {
             <phase-card
               .phase=${phase}
               .index=${i}
+              style="--index: ${i}"
             ></phase-card>
           `,
         )}

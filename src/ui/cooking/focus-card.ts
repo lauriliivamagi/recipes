@@ -16,6 +16,9 @@ export class FocusCard extends LitElement {
       :host { display: block; }
 
       .focus-card {
+        opacity: 1;
+        transform: translateY(0);
+        transition: opacity 0.3s ease, transform 0.3s ease;
         margin: var(--space-sm) var(--space-md);
         background: var(--card);
         border-radius: var(--radius);
@@ -91,6 +94,33 @@ export class FocusCard extends LitElement {
         border: 1px solid rgba(124, 92, 252, 0.3);
       }
 
+      @starting-style {
+        .focus-card {
+          opacity: 0;
+          transform: translateY(0.5rem);
+        }
+      }
+
+      .ingredient-line {
+        opacity: 1;
+        transform: translateX(0);
+        transition:
+          opacity 0.25s ease calc(var(--ing-index, 0) * 40ms),
+          transform 0.25s ease calc(var(--ing-index, 0) * 40ms);
+      }
+
+      @starting-style {
+        .ingredient-line {
+          opacity: 0;
+          transform: translateX(-0.5rem);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .focus-card,
+        .ingredient-line { transition: none; }
+      }
+
       @media (min-width: 600px) {
         .focus-card {
           max-width: 640px;
@@ -152,10 +182,10 @@ export class FocusCard extends LitElement {
 
         ${this.ingredients.length > 0 ? html`
           <div class="focus-ingredients">
-            ${this.ingredients.map(ing => {
+            ${this.ingredients.map((ing, i) => {
               const scaled = scaleQuantity(ing.quantity, this.scaleFactor);
               return html`
-                <div class="ingredient-line">
+                <div class="ingredient-line" style="--ing-index: ${i}">
                   <span class="qty">${scaled.amount} ${scaled.unit}</span> ${ing.name}
                 </div>
               `;
