@@ -74,7 +74,7 @@ const operationSchema = z.object({
   id: operationIdSchema,
   type: z.enum(['prep', 'cook']),
   action: z.string(),
-  inputs: z.array(z.string()).min(1),
+  inputs: z.array(z.string()),
   equipment: operationEquipmentSchema.optional(),
   time: z.number(),
   activeTime: z.number(),
