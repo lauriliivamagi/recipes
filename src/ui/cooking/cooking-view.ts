@@ -1,5 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { customElement, property } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { designTokens, resetStyles, baseStyles } from '../shared/styles.js';
 import { resolveIngredients } from '../../domain/recipe/resolve.js';
@@ -203,17 +203,6 @@ export class CookingView extends LitElement {
   private _getIngredients(op: Operation | FinishStep) {
     if (!this.recipe || !this._isOperation(op)) return [];
     return resolveIngredients(op, this.recipe);
-  }
-
-  private _handleStepChange(fn: () => void) {
-    if (document.startViewTransition) {
-      document.startViewTransition(() => {
-        fn();
-        this.requestUpdate();
-      });
-    } else {
-      fn();
-    }
   }
 
   override render() {

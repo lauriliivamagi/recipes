@@ -5,6 +5,7 @@ export interface TimerInput {
   seconds: number;
 }
 
+/** @knipignore Documents the callback actor's event contract */
 export type TimerEvent =
   | { type: 'TIMER.TICK'; opId: string; remaining: number }
   | { type: 'TIMER.DONE'; opId: string };

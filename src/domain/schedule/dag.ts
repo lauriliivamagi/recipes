@@ -24,10 +24,8 @@ export function validateDag(recipe: Recipe): ValidationResult {
   const errors: string[] = [];
   const ingredients = recipe.ingredients || [];
   const operations = recipe.operations || [];
-  const equipment = recipe.equipment || [];
   const ingredientMap = indexById(ingredients);
   const operationMap = indexById(operations);
-  const equipmentMap = indexById(equipment);
 
   // 1. Check all input references resolve
   for (const op of operations) {

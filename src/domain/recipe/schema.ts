@@ -132,9 +132,9 @@ export function createRecipeSchema(config: RecipeSchemaConfig) {
       const subProducts = recipe.subProducts ?? [];
       const ingredients = recipe.ingredients ?? [];
 
-      const operationIds = new Set(operations.map(op => op.id));
-      const equipmentIds = new Set(equipment.map(eq => eq.id));
-      const ingredientIds = new Set(ingredients.map(ing => ing.id));
+      const operationIds = new Set<string>(operations.map(op => op.id));
+      const equipmentIds = new Set<string>(equipment.map(eq => eq.id));
+      const ingredientIds = new Set<string>(ingredients.map(ing => ing.id));
 
       // 1. Unique IDs within each entity type
       const checkUnique = (items: { id: string }[], label: string, pathPrefix: string) => {
@@ -175,6 +175,19 @@ export function createRecipeSchema(config: RecipeSchemaConfig) {
             path: ['operations', i, 'equipment', 'use'],
           });
         }
+      });
+
+      // 4. operation.inputs must resolve to ingredient or operation IDs
+      operations.forEach((op, i) => {
+        (op.inputs ?? []).forEach((ref, j) => {
+          if (!ingredientIds.has(ref) && !operationIds.has(ref)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: `Operation "${op.id}" input "${ref}" does not match any ingredient or operation ID`,
+              path: ['operations', i, 'inputs', j],
+            });
+          }
+        });
       });
     });
 }

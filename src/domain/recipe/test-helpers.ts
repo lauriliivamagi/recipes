@@ -8,7 +8,6 @@ import type {
   Ingredient,
   Equipment,
   Operation,
-  OperationEquipment,
   SubProduct,
   FinishStep,
   OperationId,

@@ -1,5 +1,5 @@
-import { setup, assign, spawnChild, stopChild, fromCallback, raise, enqueueActions } from 'xstate';
-import type { ActorRefFrom, AnyActorRef } from 'xstate';
+import { setup, assign, spawnChild, stopChild, fromCallback, enqueueActions } from 'xstate';
+import type { AnyActorRef } from 'xstate';
 import type { Recipe } from '../../domain/recipe/types.js';
 import type { Phase, ScheduleMode } from '../../domain/schedule/types.js';
 import { timerActor } from './timer-actor.js';

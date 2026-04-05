@@ -2,7 +2,6 @@ import type { ReactiveController, ReactiveControllerHost } from 'lit';
 import type {
   Actor,
   AnyActorLogic,
-  AnyActorRef,
   SnapshotFrom,
 } from 'xstate';
 
@@ -42,51 +41,6 @@ export class ActorController<TLogic extends AnyActorLogic> implements ReactiveCo
     this._subscription = this._actor.subscribe((snapshot) => {
       this.snapshot = snapshot;
       this._host.requestUpdate();
-    });
-  }
-
-  hostDisconnected(): void {
-    this._subscription?.unsubscribe();
-    this._subscription = null;
-  }
-}
-
-/**
- * Lit ReactiveController that selects a slice of an actor's snapshot.
- * Only triggers host updates when the selected value changes.
- * Mirrors useSelector from @xstate/react.
- */
-export class SelectorController<TSelected> implements ReactiveController {
-  private _host: ReactiveControllerHost;
-  private _actorRef: AnyActorRef;
-  private _selector: (snapshot: any) => TSelected;
-  private _compare: (a: TSelected, b: TSelected) => boolean;
-  private _subscription: { unsubscribe(): void } | null = null;
-
-  value: TSelected;
-
-  constructor(
-    host: ReactiveControllerHost,
-    actorRef: AnyActorRef,
-    selector: (snapshot: any) => TSelected,
-    compare: (a: TSelected, b: TSelected) => boolean = Object.is,
-  ) {
-    this._host = host;
-    this._actorRef = actorRef;
-    this._selector = selector;
-    this._compare = compare;
-    this.value = selector(actorRef.getSnapshot());
-    host.addController(this);
-  }
-
-  hostConnected(): void {
-    this.value = this._selector(this._actorRef.getSnapshot());
-    this._subscription = this._actorRef.subscribe((snapshot: any) => {
-      const next = this._selector(snapshot);
-      if (!this._compare(this.value, next)) {
-        this.value = next;
-        this._host.requestUpdate();
-      }
     });
   }
 

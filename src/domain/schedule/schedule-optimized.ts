@@ -1,6 +1,6 @@
 import type { Operation, FinishStep } from '../recipe/types.js';
 import type { Phase } from './types.js';
-import { topoSort, indexById } from './dag.js';
+import { topoSort } from './dag.js';
 import { findCriticalPath } from './critical-path.js';
 
 function capitalize(s: string): string {

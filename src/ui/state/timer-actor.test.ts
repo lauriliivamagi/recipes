@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, vi, beforeEach, afterEach } from 'vitest';
 import { createActor } from 'xstate';
 import { timerActor } from './timer-actor.js';
 
@@ -12,7 +12,6 @@ describe('timerActor', () => {
   });
 
   it('sends TIMER.TICK every second with remaining count', () => {
-    const events: any[] = [];
     const actor = createActor(timerActor, {
       input: { opId: 'op-1', seconds: 3 },
     });
@@ -21,9 +20,6 @@ describe('timerActor', () => {
       next: () => {},
     });
 
-    // Capture events sent back to parent by listening on the actor system
-    const originalSendBack = (actor as any)._actorScope?.sendBack;
-    // Instead, we can test via a parent machine — but simpler: just test lifecycle
     actor.start();
 
     // The callback actor sends events via sendBack which we can't directly capture
@@ -44,9 +40,7 @@ describe('timerActor', () => {
     // Stopping should clean up the interval
     actor.stop();
 
-    // No more timers should fire
-    const clearSpy = vi.spyOn(globalThis, 'clearInterval');
+    // No more timers should fire after stop
     vi.advanceTimersByTime(10000);
-    // Actor is stopped, interval should have been cleared
   });
 });

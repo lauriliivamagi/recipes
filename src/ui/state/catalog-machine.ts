@@ -1,4 +1,4 @@
-import { setup, assign, enqueueActions } from 'xstate';
+import { setup, assign } from 'xstate';
 import type { CatalogRecipe } from '../../domain/catalog/types.js';
 import { filterRecipes } from '../../domain/catalog/filter.js';
 
