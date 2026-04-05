@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { computeSchedule, computeTotalTime } from './schedule.js';
-import type { Recipe } from '../recipe/types.js';
 import type { Phase } from './types.js';
+import { makeRecipe, ing, op, equip, subProd, slug } from '../recipe/test-helpers.js';
 
-const sampleRecipe: Recipe = {
+const sampleRecipe = makeRecipe({
   meta: {
     title: 'Spaghetti Bolognese',
-    slug: 'spaghetti-bolognese',
+    slug: slug('spaghetti-bolognese'),
     language: 'en',
     originalText: 'test',
     tags: ['italian'],
@@ -15,38 +15,38 @@ const sampleRecipe: Recipe = {
     difficulty: 'easy' as const,
   },
   ingredients: [
-    { id: 'onion', name: 'Onion', quantity: 1, unit: 'whole', group: 'vegetables' },
-    { id: 'garlic', name: 'Garlic', quantity: 3, unit: 'cloves', group: 'vegetables' },
-    { id: 'mince', name: 'Beef mince', quantity: 500, unit: 'g', group: 'meat' },
-    { id: 'tomatoes', name: 'Crushed tomatoes', quantity: 400, unit: 'g', group: 'canned' },
-    { id: 'spaghetti', name: 'Spaghetti', quantity: 400, unit: 'g', group: 'pasta' },
-    { id: 'parmesan', name: 'Parmesan', quantity: 50, unit: 'g', group: 'dairy' },
+    ing('onion', 'Onion', 1, 'whole', 'vegetables'),
+    ing('garlic', 'Garlic', 3, 'cloves', 'vegetables'),
+    ing('mince', 'Beef mince', 500, 'g', 'meat'),
+    ing('tomatoes', 'Crushed tomatoes', 400, 'g', 'canned'),
+    ing('spaghetti', 'Spaghetti', 400, 'g', 'pasta'),
+    ing('parmesan', 'Parmesan', 50, 'g', 'dairy'),
   ],
   equipment: [
-    { id: 'large-pan', name: 'Large pan', count: 1 },
-    { id: 'large-pot', name: 'Large pot', count: 1 },
-    { id: 'cutting-board', name: 'Cutting board', count: 1 },
-    { id: 'grater', name: 'Grater', count: 1 },
+    equip('large-pan', 'Large pan', 1),
+    equip('large-pot', 'Large pot', 1),
+    equip('cutting-board', 'Cutting board', 1),
+    equip('grater', 'Grater', 1),
   ],
   operations: [
-    { id: 'dice-onion', type: 'prep' as const, action: 'dice', inputs: ['onion'], equipment: { use: 'cutting-board', release: true }, time: 3, activeTime: 3 },
-    { id: 'mince-garlic', type: 'prep' as const, action: 'mince', inputs: ['garlic'], equipment: { use: 'cutting-board', release: true }, time: 2, activeTime: 2 },
-    { id: 'saute-veg', type: 'cook' as const, action: 'saut\u00e9', inputs: ['dice-onion', 'mince-garlic'], equipment: { use: 'large-pan', release: false }, time: 5, activeTime: 5, heat: 'medium' },
-    { id: 'brown-mince', type: 'cook' as const, action: 'brown', inputs: ['saute-veg', 'mince'], equipment: { use: 'large-pan', release: false }, time: 8, activeTime: 8, heat: 'medium-high' },
-    { id: 'simmer-sauce', type: 'cook' as const, action: 'simmer', inputs: ['brown-mince', 'tomatoes'], equipment: { use: 'large-pan', release: true }, time: 20, activeTime: 0, scalable: false, heat: 'low', output: 'sauce' },
-    { id: 'boil-pasta', type: 'cook' as const, action: 'boil', inputs: ['spaghetti'], equipment: { use: 'large-pot', release: true }, time: 8, activeTime: 1, heat: 'high', output: 'pasta' },
-    { id: 'grate-parmesan', type: 'prep' as const, action: 'grate', inputs: ['parmesan'], equipment: { use: 'grater', release: true }, time: 2, activeTime: 2 },
+    op({ id: 'dice-onion', type: 'prep', action: 'dice', inputs: ['onion'], equipment: { use: 'cutting-board', release: true }, time: 3, activeTime: 3 }),
+    op({ id: 'mince-garlic', type: 'prep', action: 'mince', inputs: ['garlic'], equipment: { use: 'cutting-board', release: true }, time: 2, activeTime: 2 }),
+    op({ id: 'saute-veg', type: 'cook', action: 'sauté', inputs: ['dice-onion', 'mince-garlic'], equipment: { use: 'large-pan', release: false }, time: 5, activeTime: 5, heat: 'medium' }),
+    op({ id: 'brown-mince', type: 'cook', action: 'brown', inputs: ['saute-veg', 'mince'], equipment: { use: 'large-pan', release: false }, time: 8, activeTime: 8, heat: 'medium-high' }),
+    op({ id: 'simmer-sauce', type: 'cook', action: 'simmer', inputs: ['brown-mince', 'tomatoes'], equipment: { use: 'large-pan', release: true }, time: 20, activeTime: 0, scalable: false, heat: 'low', output: 'sauce' }),
+    op({ id: 'boil-pasta', type: 'cook', action: 'boil', inputs: ['spaghetti'], equipment: { use: 'large-pot', release: true }, time: 8, activeTime: 1, heat: 'high', output: 'pasta' }),
+    op({ id: 'grate-parmesan', type: 'prep', action: 'grate', inputs: ['parmesan'], equipment: { use: 'grater', release: true }, time: 2, activeTime: 2 }),
   ],
   subProducts: [
-    { id: 'sauce', name: 'Bolognese Sauce', finalOp: 'simmer-sauce' },
-    { id: 'pasta', name: 'Cooked Spaghetti', finalOp: 'boil-pasta' },
+    subProd('sauce', 'Bolognese Sauce', 'simmer-sauce'),
+    subProd('pasta', 'Cooked Spaghetti', 'boil-pasta'),
   ],
   finishSteps: [
     { action: 'drain', inputs: ['boil-pasta'], details: 'Reserve pasta water' },
     { action: 'toss', inputs: ['simmer-sauce', 'boil-pasta'], details: 'Combine' },
     { action: 'top', inputs: ['grate-parmesan'], details: 'Serve' },
   ],
-};
+});
 
 describe('computeSchedule — relaxed', () => {
   const phases = computeSchedule(sampleRecipe, 'relaxed');
@@ -103,10 +103,10 @@ describe('computeSchedule — optimized', () => {
 });
 
 describe('computeSchedule — relaxed with ungrouped cook ops', () => {
-  const noSubProductRecipe: Recipe = {
+  const noSubProductRecipe = makeRecipe({
     meta: {
       title: 'Simple Stir Fry',
-      slug: 'simple-stir-fry',
+      slug: slug('simple-stir-fry'),
       language: 'en',
       originalText: 'test',
       tags: [],
@@ -115,21 +115,18 @@ describe('computeSchedule — relaxed with ungrouped cook ops', () => {
       difficulty: 'easy' as const,
     },
     ingredients: [
-      { id: 'veg', name: 'Vegetables', quantity: 300, unit: 'g', group: 'produce' },
-      { id: 'oil', name: 'Oil', quantity: 1, unit: 'tbsp', group: 'pantry' },
+      ing('veg', 'Vegetables', 300, 'g', 'produce'),
+      ing('oil', 'Oil', 1, 'tbsp', 'pantry'),
     ],
-    equipment: [
-      { id: 'wok', name: 'Wok', count: 1 },
-    ],
+    equipment: [equip('wok', 'Wok', 1)],
     operations: [
-      { id: 'chop', type: 'prep' as const, action: 'chop', inputs: ['veg'], time: 5, activeTime: 5 },
-      { id: 'fry', type: 'cook' as const, action: 'stir fry', inputs: ['chop', 'oil'], equipment: { use: 'wok', release: true }, time: 8, activeTime: 8, heat: 'high' },
+      op({ id: 'chop', type: 'prep', action: 'chop', inputs: ['veg'], time: 5, activeTime: 5 }),
+      op({ id: 'fry', type: 'cook', action: 'stir fry', inputs: ['chop', 'oil'], equipment: { use: 'wok', release: true }, time: 8, activeTime: 8, heat: 'high' }),
     ],
-    subProducts: [],
     finishSteps: [
       { action: 'plate', inputs: ['fry'], details: 'Serve hot' },
     ],
-  };
+  });
 
   it('handles cook ops not assigned to any sub-product', () => {
     const phases = computeSchedule(noSubProductRecipe, 'relaxed');
@@ -140,11 +137,10 @@ describe('computeSchedule — relaxed with ungrouped cook ops', () => {
 });
 
 describe('computeSchedule — optimized with no early prep', () => {
-  // Recipe with prep ops that are NOT needed before any passive cook
-  const noEarlyPrepRecipe: Recipe = {
+  const noEarlyPrepRecipe = makeRecipe({
     meta: {
       title: 'Test',
-      slug: 'test-no-early-prep',
+      slug: slug('test-no-early-prep'),
       language: 'en',
       originalText: 'test',
       tags: [],
@@ -153,33 +149,28 @@ describe('computeSchedule — optimized with no early prep', () => {
       difficulty: 'easy' as const,
     },
     ingredients: [
-      { id: 'a', name: 'A', quantity: 1, unit: 'g', group: 'x' },
-      { id: 'b', name: 'B', quantity: 1, unit: 'g', group: 'x' },
-      { id: 'c', name: 'C', quantity: 1, unit: 'g', group: 'x' },
+      ing('a', 'A', 1, 'g', 'x'),
+      ing('b', 'B', 1, 'g', 'x'),
+      ing('c', 'C', 1, 'g', 'x'),
     ],
     equipment: [
-      { id: 'pan', name: 'Pan', count: 1 },
-      { id: 'pot', name: 'Pot', count: 1 },
+      equip('pan', 'Pan', 1),
+      equip('pot', 'Pot', 1),
     ],
     operations: [
-      // Active cook on critical path — no passive ops at all
-      { id: 'fry', type: 'cook' as const, action: 'fry', inputs: ['a'], equipment: { use: 'pan', release: true }, time: 10, activeTime: 10, heat: 'high' },
-      { id: 'boil', type: 'cook' as const, action: 'boil', inputs: ['b'], equipment: { use: 'pot', release: true }, time: 8, activeTime: 8, heat: 'high' },
-      // Prep op that's only needed at finish, not before any cook
-      { id: 'garnish', type: 'prep' as const, action: 'chop garnish', inputs: ['c'], time: 2, activeTime: 2 },
+      op({ id: 'fry', type: 'cook', action: 'fry', inputs: ['a'], equipment: { use: 'pan', release: true }, time: 10, activeTime: 10, heat: 'high' }),
+      op({ id: 'boil', type: 'cook', action: 'boil', inputs: ['b'], equipment: { use: 'pot', release: true }, time: 8, activeTime: 8, heat: 'high' }),
+      op({ id: 'garnish', type: 'prep', action: 'chop garnish', inputs: ['c'], time: 2, activeTime: 2 }),
     ],
-    subProducts: [],
     finishSteps: [
       { action: 'plate', inputs: ['fry', 'boil', 'garnish'], details: '' },
     ],
-  };
+  });
 
   it('defers prep ops to remaining prep when no passive window exists', () => {
     const phases = computeSchedule(noEarlyPrepRecipe, 'optimized');
-    // No early prep phase since no passive cook ops need prep beforehand
     const firstPhase = phases[0];
     expect(firstPhase!.type).not.toBe('prep');
-    // Deferred prep appears as remaining prep or in parallel
     const hasGarnish = phases.some((p) =>
       p.operations.some((op) => 'id' in op && op.id === 'garnish'),
     );
@@ -188,10 +179,10 @@ describe('computeSchedule — optimized with no early prep', () => {
 });
 
 describe('computeSchedule — optimized with equipment conflicts', () => {
-  const conflictRecipe: Recipe = {
+  const conflictRecipe = makeRecipe({
     meta: {
       title: 'Conflict Test',
-      slug: 'conflict-test',
+      slug: slug('conflict-test'),
       language: 'en',
       originalText: 'test',
       tags: [],
@@ -200,32 +191,26 @@ describe('computeSchedule — optimized with equipment conflicts', () => {
       difficulty: 'easy' as const,
     },
     ingredients: [
-      { id: 'a', name: 'A', quantity: 1, unit: 'g', group: 'x' },
-      { id: 'b', name: 'B', quantity: 1, unit: 'g', group: 'x' },
-      { id: 'c', name: 'C', quantity: 1, unit: 'g', group: 'x' },
+      ing('a', 'A', 1, 'g', 'x'),
+      ing('b', 'B', 1, 'g', 'x'),
+      ing('c', 'C', 1, 'g', 'x'),
     ],
-    equipment: [
-      { id: 'pan', name: 'Pan', count: 1 },
-    ],
+    equipment: [equip('pan', 'Pan', 1)],
     operations: [
-      // Critical path: active fry then passive simmer (holds pan)
-      { id: 'fry', type: 'cook' as const, action: 'fry', inputs: ['a'], equipment: { use: 'pan', release: false }, time: 5, activeTime: 5, heat: 'high' },
-      { id: 'simmer', type: 'cook' as const, action: 'simmer', inputs: ['fry'], equipment: { use: 'pan', release: true }, time: 30, activeTime: 2, heat: 'low' },
-      // Parallel chain that also needs the pan — should NOT schedule during simmer
-      { id: 'sear', type: 'cook' as const, action: 'sear', inputs: ['b'], equipment: { use: 'pan', release: true }, time: 5, activeTime: 5, heat: 'high' },
-      { id: 'garnish', type: 'prep' as const, action: 'chop', inputs: ['c'], time: 2, activeTime: 2 },
+      op({ id: 'fry', type: 'cook', action: 'fry', inputs: ['a'], equipment: { use: 'pan', release: false }, time: 5, activeTime: 5, heat: 'high' }),
+      op({ id: 'simmer', type: 'cook', action: 'simmer', inputs: ['fry'], equipment: { use: 'pan', release: true }, time: 30, activeTime: 2, heat: 'low' }),
+      op({ id: 'sear', type: 'cook', action: 'sear', inputs: ['b'], equipment: { use: 'pan', release: true }, time: 5, activeTime: 5, heat: 'high' }),
+      op({ id: 'garnish', type: 'prep', action: 'chop', inputs: ['c'], time: 2, activeTime: 2 }),
     ],
-    subProducts: [],
     finishSteps: [
       { action: 'plate', inputs: ['simmer', 'sear', 'garnish'], details: '' },
     ],
-  };
+  });
 
   it('schedules parallel cook chain in passive window when equipment is available', () => {
     const phases = computeSchedule(conflictRecipe, 'optimized');
     const simmerPhase = phases.find((p) => p.type === 'simmer');
     expect(simmerPhase).toBeDefined();
-    // sear (5min) fits in the 28min idle window; pan is released by simmer
     expect(simmerPhase!.parallel).toBe(true);
     const parallelIds = simmerPhase!.parallelOps!.map((op) => op.id);
     expect(parallelIds).toContain('sear');
@@ -235,7 +220,6 @@ describe('computeSchedule — optimized with equipment conflicts', () => {
     const phases = computeSchedule(conflictRecipe, 'optimized');
     const simmerPhase = phases.find((p) => p.type === 'simmer');
     expect(simmerPhase).toBeDefined();
-    // garnish prep should fit in the passive window
     if (simmerPhase?.parallelOps) {
       const parallelIds = simmerPhase.parallelOps.map((op) => op.id);
       expect(parallelIds).toContain('garnish');
@@ -276,8 +260,8 @@ describe('computeTotalTime', () => {
         operations: [],
         parallel: true,
         parallelOps: [
-          { id: 'p1', type: 'prep', action: 'grate', inputs: [], time: 2, activeTime: 2 },
-          { id: 'p2', type: 'cook', action: 'boil', inputs: [], time: 8, activeTime: 1 },
+          op({ id: 'p1', type: 'prep', action: 'grate', inputs: [], time: 2, activeTime: 2 }),
+          op({ id: 'p2', type: 'cook', action: 'boil', inputs: [], time: 8, activeTime: 1 }),
         ],
       },
     ];

@@ -1,4 +1,5 @@
-import type { Recipe, Ingredient, Operation, Equipment } from '../recipe/types.js';
+import type { Recipe, Ingredient, Operation } from '../recipe/types.js';
+import type { SchedulableOperation } from '../shared/types.js';
 
 export type ValidationResult = { valid: true } | { valid: false; errors: string[] };
 export type RefKind = 'ingredient' | 'operation' | 'unknown';
@@ -85,10 +86,16 @@ export function validateDag(recipe: Recipe): ValidationResult {
   return { valid: true as const };
 }
 
+/**
+ * Topological sort using Kahn's algorithm.
+ * Accepts any type satisfying SchedulableOperation (including Operation).
+ */
 export function topoSort(
-  operations: Operation[],
+  operations: readonly SchedulableOperation[],
 ): string[] {
-  const operationMap = indexById(operations);
+  const operationMap = new Map<string, SchedulableOperation>();
+  for (const op of operations) operationMap.set(op.id, op);
+
   const inDegree = new Map<string, number>();
   const adj = new Map<string, string[]>();
   for (const op of operations) {

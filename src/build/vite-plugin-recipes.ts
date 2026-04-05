@@ -7,7 +7,7 @@ import {
 } from 'node:fs';
 import { join, dirname, relative, resolve } from 'node:path';
 import { computeSchedule, computeTotalTime } from '../domain/schedule/schedule.js';
-import { validateDag } from '../domain/schedule/dag.js';
+import { parseRecipe } from '../domain/recipe/parse.js';
 import { loadI18n } from './i18n.js';
 import type { Recipe } from '../domain/recipe/types.js';
 import type { Phase } from '../domain/schedule/types.js';
@@ -66,18 +66,10 @@ export function recipesPlugin(): Plugin {
 
     let recipe: Recipe;
     try {
-      recipe = JSON.parse(raw);
+      const json = JSON.parse(raw);
+      recipe = parseRecipe(json);
     } catch (e) {
-      console.warn(`Skipping ${file}: invalid JSON — ${(e as Error).message}`);
-      return;
-    }
-
-    const validation = validateDag(recipe);
-    if (!validation.valid) {
-      console.error(
-        `DAG validation failed for ${recipe.meta.slug}:`,
-        validation.errors,
-      );
+      console.warn(`Skipping ${file}: ${(e as Error).message}`);
       return;
     }
 

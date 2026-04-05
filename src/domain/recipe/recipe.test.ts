@@ -3,8 +3,13 @@ import { recipeSchema } from './schema.js';
 import { parseRecipe } from './parse.js';
 import { resolveIngredients } from './resolve.js';
 import type { Recipe } from './types.js';
+import { ing, op, equip, subProd, slug, qty, opId, makeRecipe } from './test-helpers.js';
 
-const validRecipe: Recipe = {
+/**
+ * validRecipeInput: flat JSON format (as stored in recipe files).
+ * Used for schema/parse tests that validate the input format.
+ */
+const validRecipeInput = {
   meta: {
     title: 'Spaghetti Bolognese',
     slug: 'spaghetti-bolognese',
@@ -89,22 +94,36 @@ const validRecipe: Recipe = {
   ],
 };
 
+/** Parsed recipe with value objects (Quantity, branded IDs). */
+const validRecipe: Recipe = parseRecipe(validRecipeInput);
+
 describe('recipeSchema', () => {
   it('accepts a valid recipe', () => {
-    const result = recipeSchema.safeParse(validRecipe);
+    const result = recipeSchema.safeParse(validRecipeInput);
     expect(result.success).toBe(true);
   });
 
+  it('transforms ingredient quantity+unit into Quantity value object', () => {
+    const result = recipeSchema.safeParse(validRecipeInput);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const ing = result.data.ingredients[0]!;
+      expect(ing.quantity).toEqual({ amount: 400, unit: 'g' });
+      // 'unit' should NOT exist as a top-level field after transform
+      expect('unit' in ing).toBe(false);
+    }
+  });
+
   it('rejects when meta is missing', () => {
-    const { meta: _, ...noMeta } = validRecipe;
+    const { meta: _, ...noMeta } = validRecipeInput;
     const result = recipeSchema.safeParse(noMeta);
     expect(result.success).toBe(false);
   });
 
   it('rejects an invalid slug pattern', () => {
     const bad = {
-      ...validRecipe,
-      meta: { ...validRecipe.meta, slug: 'INVALID SLUG!' },
+      ...validRecipeInput,
+      meta: { ...validRecipeInput.meta, slug: 'INVALID SLUG!' },
     };
     const result = recipeSchema.safeParse(bad);
     expect(result.success).toBe(false);
@@ -112,21 +131,21 @@ describe('recipeSchema', () => {
 
   it('rejects an invalid difficulty value', () => {
     const bad = {
-      ...validRecipe,
-      meta: { ...validRecipe.meta, difficulty: 'extreme' },
+      ...validRecipeInput,
+      meta: { ...validRecipeInput.meta, difficulty: 'extreme' },
     };
     const result = recipeSchema.safeParse(bad);
     expect(result.success).toBe(false);
   });
 
   it('rejects empty operations array', () => {
-    const bad = { ...validRecipe, operations: [] };
+    const bad = { ...validRecipeInput, operations: [] };
     const result = recipeSchema.safeParse(bad);
     expect(result.success).toBe(false);
   });
 
   it('rejects empty ingredients array', () => {
-    const bad = { ...validRecipe, ingredients: [] };
+    const bad = { ...validRecipeInput, ingredients: [] };
     const result = recipeSchema.safeParse(bad);
     expect(result.success).toBe(false);
   });
@@ -134,7 +153,7 @@ describe('recipeSchema', () => {
 
 describe('parseRecipe', () => {
   it('returns typed data for valid input', () => {
-    const recipe = parseRecipe(validRecipe);
+    const recipe = parseRecipe(validRecipeInput);
     expect(recipe.meta.title).toBe('Spaghetti Bolognese');
     expect(recipe.ingredients).toHaveLength(7);
   });
@@ -142,19 +161,37 @@ describe('parseRecipe', () => {
   it('throws a descriptive error for invalid input', () => {
     expect(() => parseRecipe({})).toThrow('Invalid recipe');
   });
+
+  it('throws on DAG validation failure (cycle)', () => {
+    const cyclic = {
+      ...validRecipeInput,
+      operations: [
+        { id: 'a', type: 'prep', action: 'x', inputs: ['b'], time: 1, activeTime: 1 },
+        { id: 'b', type: 'prep', action: 'y', inputs: ['a'], time: 1, activeTime: 1 },
+      ],
+      finishSteps: [{ action: 'done', inputs: [] }],
+    };
+    expect(() => parseRecipe(cyclic)).toThrow('Invalid recipe DAG');
+  });
+
+  it('ingredient has Quantity value object after parse', () => {
+    const recipe = parseRecipe(validRecipeInput);
+    const spaghetti = recipe.ingredients.find(i => i.id === 'spaghetti')!;
+    expect(spaghetti.quantity).toEqual({ amount: 400, unit: 'g' });
+  });
 });
 
 describe('resolveIngredients', () => {
   it('returns direct ingredient inputs', () => {
-    const op = validRecipe.operations.find((o) => o.id === 'boil-pasta')!;
-    const result = resolveIngredients(op, validRecipe);
+    const opRef = validRecipe.operations.find((o) => o.id === 'boil-pasta')!;
+    const result = resolveIngredients(opRef, validRecipe);
     expect(result).toHaveLength(1);
     expect(result[0]!.id).toBe('spaghetti');
   });
 
   it('resolves transitive ingredients through upstream operations', () => {
-    const op = validRecipe.operations.find((o) => o.id === 'make-sauce')!;
-    const result = resolveIngredients(op, validRecipe);
+    const opRef = validRecipe.operations.find((o) => o.id === 'make-sauce')!;
+    const result = resolveIngredients(opRef, validRecipe);
     const ids = result.map((i) => i.id).sort();
     expect(ids).toEqual([
       'garlic',
@@ -167,23 +204,22 @@ describe('resolveIngredients', () => {
   });
 
   it('does not return duplicate ingredients', () => {
-    const op = validRecipe.operations.find((o) => o.id === 'make-sauce')!;
-    const result = resolveIngredients(op, validRecipe);
+    const opRef = validRecipe.operations.find((o) => o.id === 'make-sauce')!;
+    const result = resolveIngredients(opRef, validRecipe);
     const ids = result.map((i) => i.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
   it('ignores references that match neither ingredient nor operation', () => {
-    const op: Recipe['operations'][0] = {
+    const testOp = op({
       id: 'test-op',
       type: 'cook',
       action: 'test',
       inputs: ['nonexistent-ref', 'spaghetti'],
       time: 1,
       activeTime: 1,
-    };
-    const result = resolveIngredients(op, validRecipe);
-    // Only spaghetti resolves; nonexistent-ref is silently skipped
+    });
+    const result = resolveIngredients(testOp, validRecipe);
     expect(result).toHaveLength(1);
     expect(result[0]!.id).toBe('spaghetti');
   });

@@ -4,7 +4,7 @@ export function findCriticalPath(
   cookOps: Operation[],
   operationMap: Map<string, Operation>,
 ): Set<string> {
-  const cookIds = new Set(cookOps.map((op) => op.id));
+  const cookIds = new Set<string>(cookOps.map((op) => op.id));
 
   const inDeg = new Map<string, number>();
   const adj = new Map<string, string[]>();

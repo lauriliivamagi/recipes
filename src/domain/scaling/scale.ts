@@ -1,12 +1,12 @@
+import type { Quantity } from '../recipe/types.js';
 import { roundQuantity } from './round.js';
 
 export function scaleQuantity(
-  qty: number,
-  unit: string,
+  qty: Quantity,
   scaleFactor: number,
-): number {
-  const scaled = qty * scaleFactor;
-  return roundQuantity(scaled, unit);
+): Quantity {
+  const scaled = qty.amount * scaleFactor;
+  return { amount: roundQuantity(scaled, qty.unit), unit: qty.unit };
 }
 
 export function scaleTime(

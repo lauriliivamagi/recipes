@@ -153,10 +153,10 @@ export class FocusCard extends LitElement {
         ${this.ingredients.length > 0 ? html`
           <div class="focus-ingredients">
             ${this.ingredients.map(ing => {
-              const scaled = scaleQuantity(ing.quantity, ing.unit, this.scaleFactor);
+              const scaled = scaleQuantity(ing.quantity, this.scaleFactor);
               return html`
                 <div class="ingredient-line">
-                  <span class="qty">${scaled} ${ing.unit}</span> ${ing.name}
+                  <span class="qty">${scaled.amount} ${scaled.unit}</span> ${ing.name}
                 </div>
               `;
             })}

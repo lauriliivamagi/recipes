@@ -46,7 +46,7 @@ function groupIntoChains(
 ): Operation[][] {
   if (ops.length === 0) return [];
 
-  const opIds = new Set(ops.map((op) => op.id));
+  const opIds = new Set<string>(ops.map((op) => op.id));
   const visited = new Set<string>();
   const chains: Operation[][] = [];
 
@@ -72,7 +72,7 @@ function groupIntoChains(
     }
 
     // Topological sort within the component
-    const compIds = new Set(component.map((op) => op.id));
+    const compIds = new Set<string>(component.map((op) => op.id));
     const compInDeg = new Map<string, number>();
     for (const op of component) {
       let deg = 0;

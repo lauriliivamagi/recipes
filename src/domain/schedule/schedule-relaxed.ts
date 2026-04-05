@@ -92,8 +92,8 @@ function groupCookOpsBySubProduct(
 
   const groups = [...groupMap.values()];
   groups.sort((a, b) => {
-    const aIds = new Set(a.map((op) => op.id));
-    const bIds = new Set(b.map((op) => op.id));
+    const aIds = new Set<string>(a.map((op) => op.id));
+    const bIds = new Set<string>(b.map((op) => op.id));
     const bDependsOnA = b.some((op) =>
       (op.inputs || []).some((ref) => aIds.has(ref)),
     );

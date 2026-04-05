@@ -1,6 +1,34 @@
+// ---------------------------------------------------------------------------
+// Branded-type helper (zero runtime cost)
+// ---------------------------------------------------------------------------
+type Brand<T, B extends string> = T & { readonly __brand: B };
+
+// ---------------------------------------------------------------------------
+// Branded ID types — prevent mixing up ID categories at compile time
+// ---------------------------------------------------------------------------
+export type OperationId = Brand<string, 'OperationId'>;
+export type IngredientId = Brand<string, 'IngredientId'>;
+export type EquipmentId = Brand<string, 'EquipmentId'>;
+export type SubProductId = Brand<string, 'SubProductId'>;
+export type RecipeSlug = Brand<string, 'RecipeSlug'>;
+
+// ---------------------------------------------------------------------------
+// Value Objects
+// ---------------------------------------------------------------------------
+
+/** Amount + unit paired together. Prevents passing wrong unit for a quantity. */
+export interface Quantity {
+  readonly amount: number;
+  readonly unit: string;
+}
+
+// ---------------------------------------------------------------------------
+// Entity interfaces
+// ---------------------------------------------------------------------------
+
 export interface RecipeMeta {
   title: string;
-  slug: string;
+  slug: RecipeSlug;
   language: string;
   source?: string;
   originalText: string;
@@ -12,26 +40,25 @@ export interface RecipeMeta {
 }
 
 export interface Ingredient {
-  id: string;
+  id: IngredientId;
   name: string;
-  quantity: number;
-  unit: string;
+  quantity: Quantity;
   group: string;
 }
 
 export interface Equipment {
-  id: string;
+  id: EquipmentId;
   name: string;
   count: number;
 }
 
 export interface OperationEquipment {
-  use: string;
+  use: EquipmentId;
   release: boolean;
 }
 
 export interface Operation {
-  id: string;
+  id: OperationId;
   type: 'prep' | 'cook';
   action: string;
   inputs: string[];
@@ -45,7 +72,7 @@ export interface Operation {
 }
 
 export interface SubProduct {
-  id: string;
+  id: SubProductId;
   name: string;
   finalOp: string;
 }
@@ -55,6 +82,10 @@ export interface FinishStep {
   inputs: string[];
   details?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Aggregate Root
+// ---------------------------------------------------------------------------
 
 export interface Recipe {
   meta: RecipeMeta;

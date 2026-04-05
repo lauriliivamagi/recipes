@@ -3,6 +3,9 @@ import { normalizeUnit, convertUnit } from './unit-convert.js';
 import { convertTemperature } from './temperature.js';
 import { roundQuantity } from './round.js';
 import { scaleQuantity, scaleTime } from './scale.js';
+import type { Quantity } from '../recipe/types.js';
+
+const q = (amount: number, unit: string): Quantity => ({ amount, unit });
 
 describe('normalizeUnit', () => {
   it('resolves plural alias to canonical', () => {
@@ -85,7 +88,6 @@ describe('convertUnit', () => {
   it('matches ingredient by substring (whole wheat flour matches flour)', () => {
     const result = convertUnit(1, 'cup', 'whole wheat flour');
     expect(result.unit).toBe('g');
-    // exact match for "whole wheat flour" key: 128 g_per_cup
     expect(result.quantity).toBe(128);
   });
 
@@ -144,9 +146,14 @@ describe('roundQuantity', () => {
 });
 
 describe('scaleQuantity', () => {
-  it('scales and rounds', () => {
-    expect(scaleQuantity(120, 'g', 2)).toBe(240);
-    expect(scaleQuantity(1, 'cup', 1.5)).toBe(1.5);
+  it('scales and rounds, returning a Quantity', () => {
+    expect(scaleQuantity(q(120, 'g'), 2)).toEqual(q(240, 'g'));
+    expect(scaleQuantity(q(1, 'cup'), 1.5)).toEqual(q(1.5, 'cup'));
+  });
+
+  it('preserves the unit', () => {
+    const result = scaleQuantity(q(100, 'ml'), 3);
+    expect(result.unit).toBe('ml');
   });
 });
 
