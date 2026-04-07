@@ -1,23 +1,12 @@
-import type { Recipe, Ingredient, Operation } from '../recipe/types.js';
+import type { Recipe } from '../recipe/types.js';
 import type { SchedulableOperation } from '../shared/types.js';
 
 export type ValidationResult = { valid: true } | { valid: false; errors: string[] };
-export type RefKind = 'ingredient' | 'operation' | 'unknown';
 
 export function indexById<T extends { id: string }>(items: T[]): Map<string, T> {
   const map = new Map<string, T>();
   for (const item of items) map.set(item.id, item);
   return map;
-}
-
-export function classifyRef(
-  ref: string,
-  ingredientMap: Map<string, Ingredient>,
-  operationMap: Map<string, Operation>,
-): RefKind {
-  if (ingredientMap.has(ref)) return 'ingredient';
-  if (operationMap.has(ref)) return 'operation';
-  return 'unknown';
 }
 
 export function validateDag(recipe: Recipe): ValidationResult {
@@ -27,23 +16,23 @@ export function validateDag(recipe: Recipe): ValidationResult {
   const ingredientMap = indexById(ingredients);
   const operationMap = indexById(operations);
 
-  // 1. Check all input references resolve
+  // 1a. Check all ingredient references resolve
   for (const op of operations) {
-    for (const ref of op.inputs || []) {
-      const kind = classifyRef(ref, ingredientMap, operationMap);
-      if (kind === 'unknown') {
+    for (const ref of op.ingredients || []) {
+      if (!ingredientMap.has(ref)) {
         errors.push(
-          `Operation "${op.id}": input "${ref}" does not match any ingredient or operation ID.`,
+          `Operation "${op.id}": ingredient "${ref}" does not match any ingredient ID.`,
         );
       }
     }
   }
-  for (const step of recipe.finishSteps || []) {
-    for (const ref of step.inputs || []) {
-      const kind = classifyRef(ref, ingredientMap, operationMap);
-      if (kind === 'unknown') {
+
+  // 1b. Check all dependency references resolve
+  for (const op of operations) {
+    for (const ref of op.depends || []) {
+      if (!operationMap.has(ref)) {
         errors.push(
-          `Finish step "${step.action}": input "${ref}" does not match any ingredient or operation ID.`,
+          `Operation "${op.id}": dependency "${ref}" does not match any operation ID.`,
         );
       }
     }
@@ -62,21 +51,22 @@ export function validateDag(recipe: Recipe): ValidationResult {
   const equipmentHolder = new Map<string, string>();
   for (const opId of sorted) {
     const op = operationMap.get(opId)!;
-    if (!op.equipment) continue;
-    const eqId = op.equipment.use;
-    const holder = equipmentHolder.get(eqId);
-    if (holder) {
-      const isChained = (op.inputs || []).includes(holder);
-      if (!isChained) {
-        errors.push(
-          `Equipment conflict: "${eqId}" is held by "${holder}" (release: false) but "${op.id}" also needs it and is not a direct successor.`,
-        );
+    for (const eq of op.equipment) {
+      const eqId = eq.use;
+      const holder = equipmentHolder.get(eqId);
+      if (holder) {
+        const isChained = (op.depends || []).some(d => d === holder);
+        if (!isChained) {
+          errors.push(
+            `Equipment conflict: "${eqId}" is held by "${holder}" (release: false) but "${op.id}" also needs it and is not a direct successor.`,
+          );
+        }
       }
-    }
-    if (op.equipment.release) {
-      equipmentHolder.delete(eqId);
-    } else {
-      equipmentHolder.set(eqId, op.id);
+      if (eq.release) {
+        equipmentHolder.delete(eqId);
+      } else {
+        equipmentHolder.set(eqId, op.id);
+      }
     }
   }
 
@@ -101,7 +91,7 @@ export function topoSort(
     adj.set(op.id, []);
   }
   for (const op of operations) {
-    for (const ref of op.inputs || []) {
+    for (const ref of op.depends || []) {
       if (operationMap.has(ref)) {
         adj.get(ref)!.push(op.id);
         inDegree.set(op.id, inDegree.get(op.id)! + 1);

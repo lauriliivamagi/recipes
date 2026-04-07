@@ -1,0 +1,13 @@
+{
+  "createdAt": "2026-04-06",
+  "meals": [
+    {
+      "slug": "spaghetti-bolognese",
+      "addedAt": "2026-04-06"
+    },
+    {
+      "slug": "classic-lasagne",
+      "addedAt": "2026-04-06"
+    }
+  ]
+}

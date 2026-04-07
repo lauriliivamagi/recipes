@@ -25,6 +25,20 @@ const recipeSlugSchema = z.string().regex(slugPattern).transform(s => s as Recip
 // Value object schemas
 // ---------------------------------------------------------------------------
 
+/** Duration or range in seconds. min is lower bound; max is upper bound. */
+const timeRangeSchema = z.object({
+  min: z.number().nonnegative().describe('Lower bound (or exact) duration in seconds'),
+  max: z.number().nonnegative().optional().describe('Upper bound duration in seconds'),
+}).strict().refine(
+  (r) => r.max === undefined || r.min <= r.max,
+  { error: () => 'TimeRange min must be <= max', path: ['max'] },
+);
+
+/** Helper: get the upper bound of a TimeRange (max if present, else min). */
+function timeRangeMax(r: { min: number; max?: number }): number {
+  return r.max ?? r.min;
+}
+
 /**
  * Ingredient schema: JSON input has flat `quantity` + `unit` fields.
  * Transform merges them into a Quantity value object.
@@ -44,10 +58,16 @@ const ingredientSchema = z.object({
 // Other schemas
 // ---------------------------------------------------------------------------
 
+const capacitySchema = z.object({
+  amount: z.number().positive().describe('Capacity amount'),
+  unit: z.string().min(1).describe('Capacity unit (e.g., L, cm)'),
+}).strict();
+
 const equipmentSchema = z.object({
   id: equipmentIdSchema.describe('Unique identifier for this piece of equipment'),
   name: z.string().min(1).describe('Human-readable equipment name'),
   count: z.number().int().min(1).describe('Number of this item needed'),
+  capacity: capacitySchema.optional().describe('Physical capacity (e.g., 5L pot, 30cm pan)'),
 }).strict();
 
 const operationEquipmentSchema = z.object({
@@ -55,23 +75,33 @@ const operationEquipmentSchema = z.object({
   release: z.boolean().describe('If true, equipment is freed after this operation'),
 }).strict();
 
+const temperatureSchema = z.object({
+  min: z.number().describe('Lower bound (or exact) temperature'),
+  max: z.number().optional().describe('Upper bound temperature'),
+  unit: z.enum(['C', 'F']).describe('Temperature unit'),
+}).strict().refine(
+  (t) => t.max === undefined || t.min <= t.max,
+  { error: () => 'Temperature min must be <= max', path: ['max'] },
+);
+
 const operationSchema = z.object({
-  id: operationIdSchema.describe('Unique identifier for this operation, referenced by other operations or finishSteps'),
-  type: z.enum(['prep', 'cook']).describe('Whether this is a preparation or cooking step'),
+  id: operationIdSchema.describe('Unique identifier for this operation'),
+  type: z.enum(['prep', 'cook', 'rest', 'assemble']).describe('Operation category'),
   action: z.string().min(1).describe('Verb describing the operation (e.g., dice, sauté, simmer, boil)'),
-  inputs: z.array(z.string().regex(slugPattern)).describe('Array of ingredient IDs or previous operation IDs forming the DAG edges'),
-  equipment: operationEquipmentSchema.optional().describe('Equipment used by this operation'),
-  time: z.number().describe('Total duration of the operation in minutes'),
-  activeTime: z.number().describe('Minutes of active attention required (0 for passive operations like simmering)'),
-  scalable: z.boolean().optional().describe('If false, time does not change when scaling servings. Defaults to true.'),
-  heat: z.string().optional().describe('Heat level (e.g., low, medium, medium-high, high)'),
+  ingredients: z.array(ingredientIdSchema).describe('Ingredient IDs consumed by this operation'),
+  depends: z.array(operationIdSchema).describe('Operation IDs that must complete before this one'),
+  equipment: z.array(operationEquipmentSchema).describe('Equipment used by this operation (empty array if none)'),
+  time: timeRangeSchema.describe('Total duration in seconds'),
+  activeTime: timeRangeSchema.describe('Seconds of active attention required'),
+  scalable: z.boolean().describe('If false, time does not change when scaling servings'),
+  temperature: temperatureSchema.optional().describe('Target temperature or range'),
   details: z.string().optional().describe('Additional instructions for this operation'),
   output: subProductIdSchema.optional().describe('Sub-product ID this operation produces'),
 }).strict().refine(
-  (op) => op.activeTime <= op.time,
+  (op) => timeRangeMax(op.activeTime) <= timeRangeMax(op.time),
   { error: (ctx) => {
-    const op = ctx.input as { activeTime: number; time: number };
-    return `activeTime (${op.activeTime}) must be <= time (${op.time})`;
+    const op = ctx.input as { activeTime: { min: number; max?: number }; time: { min: number; max?: number } };
+    return `activeTime max (${timeRangeMax(op.activeTime)}) must be <= time max (${timeRangeMax(op.time)})`;
   }, path: ['activeTime'] },
 );
 
@@ -79,12 +109,6 @@ const subProductSchema = z.object({
   id: subProductIdSchema.describe('Unique identifier for this sub-product'),
   name: z.string().min(1).describe('Human-readable name for the intermediate product'),
   finalOp: operationIdSchema.describe('Operation ID that produces this sub-product'),
-}).strict();
-
-const finishStepSchema = z.object({
-  action: z.string().min(1).describe('Verb describing the finishing action'),
-  inputs: z.array(z.string().regex(slugPattern)).min(1).describe('Array of operation IDs (always operation IDs, never sub-product IDs)'),
-  details: z.string().optional().describe('Additional instructions for this finishing step'),
 }).strict();
 
 // ---------------------------------------------------------------------------
@@ -110,10 +134,11 @@ export function createRecipeSchema(config: RecipeSchemaConfig) {
     tags: z.array(tagSchema).describe('Categorization tags for filtering and search'),
     servings: z.number().positive().describe('Number of servings the recipe yields'),
     totalTime: z.object({
-      relaxed: z.number().nonnegative().describe('Total time in minutes with all prep front-loaded (relaxed mode)'),
-      optimized: z.number().nonnegative().describe('Total time in minutes with prep distributed into idle windows (optimized mode)'),
+      relaxed: timeRangeSchema.describe('Total time in seconds with all prep front-loaded (relaxed mode)'),
+      optimized: timeRangeSchema.describe('Total time in seconds with prep distributed into idle windows (optimized mode)'),
     }).strict(),
     difficulty: z.enum(['easy', 'medium', 'hard']).describe('Recipe difficulty level'),
+    energyTier: z.enum(['zombie', 'moderate', 'project']).optional().describe('Derived from DAG decision count + active time'),
     notes: z.string().optional().describe('Optional free-form notes about the recipe'),
   }).strict();
 
@@ -123,10 +148,8 @@ export function createRecipeSchema(config: RecipeSchemaConfig) {
     equipment: z.array(equipmentSchema).describe('Equipment needed for this recipe'),
     operations: z.array(operationSchema).min(1).describe('Ordered operations forming the recipe DAG'),
     subProducts: z.array(subProductSchema).describe('Intermediate products created during cooking'),
-    finishSteps: z.array(finishStepSchema).min(1).describe('Final plating and serving steps'),
   }).strict().describe('Structured recipe data model for the Recipe Visualization App')
     .superRefine((recipe, ctx) => {
-      // Guard: only run cross-entity checks if arrays are present
       const operations = recipe.operations ?? [];
       const equipment = recipe.equipment ?? [];
       const subProducts = recipe.subProducts ?? [];
@@ -166,25 +189,40 @@ export function createRecipeSchema(config: RecipeSchemaConfig) {
         }
       });
 
-      // 3. operation.equipment.use must resolve to an equipment ID
+      // 3. operation.equipment[].use must resolve to an equipment ID
       operations.forEach((op, i) => {
-        if (op.equipment && !equipmentIds.has(op.equipment.use)) {
-          ctx.addIssue({
-            code: 'custom',
-            message: `Operation "${op.id}" references unknown equipment "${op.equipment.use}"`,
-            path: ['operations', i, 'equipment', 'use'],
-          });
-        }
-      });
-
-      // 4. operation.inputs must resolve to ingredient or operation IDs
-      operations.forEach((op, i) => {
-        (op.inputs ?? []).forEach((ref, j) => {
-          if (!ingredientIds.has(ref) && !operationIds.has(ref)) {
+        op.equipment.forEach((eq, j) => {
+          if (!equipmentIds.has(eq.use)) {
             ctx.addIssue({
               code: 'custom',
-              message: `Operation "${op.id}" input "${ref}" does not match any ingredient or operation ID`,
-              path: ['operations', i, 'inputs', j],
+              message: `Operation "${op.id}" references unknown equipment "${eq.use}"`,
+              path: ['operations', i, 'equipment', j, 'use'],
+            });
+          }
+        });
+      });
+
+      // 4. operation.ingredients must resolve to ingredient IDs
+      operations.forEach((op, i) => {
+        op.ingredients.forEach((ref, j) => {
+          if (!ingredientIds.has(ref)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: `Operation "${op.id}" ingredient "${ref}" does not match any ingredient ID`,
+              path: ['operations', i, 'ingredients', j],
+            });
+          }
+        });
+      });
+
+      // 5. operation.depends must resolve to operation IDs
+      operations.forEach((op, i) => {
+        op.depends.forEach((ref, j) => {
+          if (!operationIds.has(ref)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: `Operation "${op.id}" depends on unknown operation "${ref}"`,
+              path: ['operations', i, 'depends', j],
             });
           }
         });

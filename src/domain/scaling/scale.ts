@@ -1,4 +1,4 @@
-import type { Quantity } from '../recipe/types.js';
+import type { Quantity, TimeRange } from '../recipe/types.js';
 import { roundQuantity } from './round.js';
 
 export function scaleQuantity(
@@ -10,11 +10,17 @@ export function scaleQuantity(
 }
 
 export function scaleTime(
-  time: number,
+  time: TimeRange,
   scalable: boolean,
   scaleFactor: number,
-): number {
+): TimeRange {
   if (!scalable) return time;
-  if (scaleFactor <= 1) return Math.max(1, Math.round(time * scaleFactor));
-  return Math.round(time * Math.sqrt(scaleFactor));
+  const scaleValue = (v: number): number => {
+    if (scaleFactor <= 1) return Math.max(1, Math.round(v * scaleFactor));
+    return Math.round(v * Math.sqrt(scaleFactor));
+  };
+  return {
+    min: scaleValue(time.min),
+    ...(time.max !== undefined ? { max: scaleValue(time.max) } : {}),
+  };
 }

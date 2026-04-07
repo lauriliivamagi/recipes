@@ -22,6 +22,12 @@ export interface Quantity {
   readonly unit: string;
 }
 
+/** Duration or range in seconds. min is lower bound (or exact when max omitted). */
+export interface TimeRange {
+  readonly min: number;
+  readonly max?: number;
+}
+
 // ---------------------------------------------------------------------------
 // Entity interfaces
 // ---------------------------------------------------------------------------
@@ -34,8 +40,9 @@ export interface RecipeMeta {
   originalText: string;
   tags: string[];
   servings: number;
-  totalTime: { relaxed: number; optimized: number };
+  totalTime: { relaxed: TimeRange; optimized: TimeRange };
   difficulty: 'easy' | 'medium' | 'hard';
+  energyTier?: 'zombie' | 'moderate' | 'project';
   notes?: string;
 }
 
@@ -50,6 +57,7 @@ export interface Equipment {
   id: EquipmentId;
   name: string;
   count: number;
+  capacity?: Quantity;
 }
 
 export interface OperationEquipment {
@@ -57,16 +65,23 @@ export interface OperationEquipment {
   release: boolean;
 }
 
+export interface Temperature {
+  min: number;
+  max?: number;
+  unit: 'C' | 'F';
+}
+
 export interface Operation {
   id: OperationId;
-  type: 'prep' | 'cook';
+  type: 'prep' | 'cook' | 'rest' | 'assemble';
   action: string;
-  inputs: string[];
-  equipment?: OperationEquipment;
-  time: number;
-  activeTime: number;
-  scalable?: boolean;
-  heat?: string;
+  ingredients: IngredientId[];
+  depends: OperationId[];
+  equipment: OperationEquipment[];
+  time: TimeRange;
+  activeTime: TimeRange;
+  scalable: boolean;
+  temperature?: Temperature;
   details?: string;
   output?: SubProductId;
 }
@@ -75,12 +90,6 @@ export interface SubProduct {
   id: SubProductId;
   name: string;
   finalOp: OperationId;
-}
-
-export interface FinishStep {
-  action: string;
-  inputs: string[];
-  details?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -93,5 +102,4 @@ export interface Recipe {
   equipment: Equipment[];
   operations: Operation[];
   subProducts: SubProduct[];
-  finishSteps: FinishStep[];
 }

@@ -1,7 +1,7 @@
 import type { TimerState } from './types.js';
 
-export function createTimer(opId: string, minutes: number): TimerState {
-  const totalSeconds = Math.round(minutes * 60);
+export function createTimer(opId: string, seconds: number): TimerState {
+  const totalSeconds = Math.round(seconds);
   return { opId, totalSeconds, remainingSeconds: totalSeconds, running: true };
 }
 

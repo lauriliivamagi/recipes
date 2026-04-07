@@ -116,10 +116,8 @@ export class RecipeCard extends LitElement {
     const r = this.recipe;
     if (r == null) return nothing;
 
-    const timeValue =
-      typeof r.totalTime === 'object'
-        ? r.totalTime.optimized || r.totalTime.relaxed
-        : r.totalTime;
+    const timeSeconds = r.totalTime?.optimized?.min || r.totalTime?.relaxed?.min || 0;
+    const timeValue = timeSeconds > 0 ? Math.round(timeSeconds / 60) : 0;
 
     return html`
       <a href=${r.url || '#'}>

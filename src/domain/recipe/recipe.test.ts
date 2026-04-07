@@ -4,7 +4,7 @@ import { recipeSchema, createRecipeSchema } from './schema.js';
 import { parseRecipe } from './parse.js';
 import { resolveIngredients } from './resolve.js';
 import type { Recipe } from './types.js';
-import { ing, op, equip, subProd, slug, qty, opId, makeRecipe } from './test-helpers.js';
+import { op } from './test-helpers.js';
 
 /**
  * validRecipeInput: flat JSON format (as stored in recipe files).
@@ -18,7 +18,7 @@ const validRecipeInput = {
     originalText: 'Classic Italian pasta with meat sauce.',
     tags: ['pasta', 'italian', 'dinner'],
     servings: 4,
-    totalTime: { relaxed: 90, optimized: 60 },
+    totalTime: { relaxed: { min: 5400 }, optimized: { min: 3600 } },
     difficulty: 'medium',
   },
   ingredients: [
@@ -39,59 +39,76 @@ const validRecipeInput = {
       id: 'dice-onion',
       type: 'prep',
       action: 'Dice the onion',
-      inputs: ['onion'],
-      time: 5,
-      activeTime: 5,
+      ingredients: ['onion'],
+      depends: [],
+      equipment: [],
+      time: { min: 300 },
+      activeTime: { min: 300 },
+      scalable: true,
     },
     {
       id: 'mince-garlic',
       type: 'prep',
       action: 'Mince the garlic',
-      inputs: ['garlic'],
-      time: 2,
-      activeTime: 2,
+      ingredients: ['garlic'],
+      depends: [],
+      equipment: [],
+      time: { min: 120 },
+      activeTime: { min: 120 },
+      scalable: true,
     },
     {
       id: 'brown-beef',
       type: 'cook',
       action: 'Brown the ground beef',
-      inputs: ['ground-beef', 'olive-oil'],
-      equipment: { use: 'skillet', release: false },
-      time: 10,
-      activeTime: 5,
-      heat: 'medium-high',
+      ingredients: ['ground-beef', 'olive-oil'],
+      depends: [],
+      equipment: [{ use: 'skillet', release: false }],
+      time: { min: 600 },
+      activeTime: { min: 300 },
+      scalable: true,
+      temperature: { min: 200, unit: 'C' },
     },
     {
       id: 'make-sauce',
       type: 'cook',
       action: 'Simmer sauce with beef and aromatics',
-      inputs: ['brown-beef', 'dice-onion', 'mince-garlic', 'tomato-sauce', 'salt'],
-      equipment: { use: 'skillet', release: true },
-      time: 30,
-      activeTime: 5,
-      heat: 'low',
+      ingredients: ['tomato-sauce', 'salt'],
+      depends: ['brown-beef', 'dice-onion', 'mince-garlic'],
+      equipment: [{ use: 'skillet', release: true }],
+      time: { min: 1800 },
+      activeTime: { min: 300 },
+      scalable: true,
+      temperature: { min: 120, unit: 'C' },
       details: 'Stir occasionally.',
     },
     {
       id: 'boil-pasta',
       type: 'cook',
       action: 'Boil the spaghetti',
-      inputs: ['spaghetti'],
-      equipment: { use: 'large-pot', release: true },
-      time: 10,
-      activeTime: 3,
-      heat: 'high',
+      ingredients: ['spaghetti'],
+      depends: [],
+      equipment: [{ use: 'large-pot', release: true }],
+      time: { min: 600 },
+      activeTime: { min: 180 },
+      scalable: true,
+      temperature: { min: 100, unit: 'C' },
+    },
+    {
+      id: 'plate',
+      type: 'assemble',
+      action: 'Plate spaghetti and top with sauce',
+      ingredients: [],
+      depends: ['boil-pasta', 'make-sauce'],
+      equipment: [],
+      time: { min: 120 },
+      activeTime: { min: 120 },
+      scalable: true,
+      details: 'Serve immediately with grated parmesan.',
     },
   ],
   subProducts: [
     { id: 'bolognese-sauce', name: 'Bolognese Sauce', finalOp: 'make-sauce' },
-  ],
-  finishSteps: [
-    {
-      action: 'Plate spaghetti and top with sauce',
-      inputs: ['boil-pasta', 'make-sauce'],
-      details: 'Serve immediately with grated parmesan.',
-    },
   ],
 };
 
@@ -211,9 +228,12 @@ describe('recipeSchema', () => {
     const bad = {
       ...validRecipeInput,
       operations: [
-        { ...validRecipeInput.operations[0], time: 5, activeTime: 10 },
+        {
+          ...validRecipeInput.operations[0],
+          time: { min: 300 },
+          activeTime: { min: 600 },
+        },
       ],
-      finishSteps: [{ action: 'done', inputs: ['dice-onion'] }],
     };
     const result = recipeSchema.safeParse(bad);
     expect(result.success).toBe(false);
@@ -222,31 +242,21 @@ describe('recipeSchema', () => {
   it('accepts activeTime equal to time', () => {
     const result = recipeSchema.safeParse(validRecipeInput);
     expect(result.success).toBe(true);
-    // dice-onion has time: 5, activeTime: 5 — should pass
+    // dice-onion has time: {min: 300}, activeTime: {min: 300} — should pass
   });
 
-  it('rejects malformed input IDs (not slug pattern)', () => {
+  it('rejects malformed ingredient IDs (not slug pattern)', () => {
     const bad = {
       ...validRecipeInput,
       operations: [
-        { ...validRecipeInput.operations[0], inputs: ['INVALID SLUG!'] },
+        { ...validRecipeInput.operations[0], ingredients: ['INVALID SLUG!'] },
       ],
-      finishSteps: [{ action: 'done', inputs: ['dice-onion'] }],
     };
     const result = recipeSchema.safeParse(bad);
     expect(result.success).toBe(false);
   });
 
-  it('rejects empty finishStep inputs', () => {
-    const bad = {
-      ...validRecipeInput,
-      finishSteps: [{ action: 'plate', inputs: [] }],
-    };
-    const result = recipeSchema.safeParse(bad);
-    expect(result.success).toBe(false);
-  });
-
-  it('allows empty operation inputs (e.g., preheat oven)', () => {
+  it('allows empty operation ingredients (e.g., preheat oven)', () => {
     const withPreheat = {
       ...validRecipeInput,
       operations: [
@@ -255,10 +265,12 @@ describe('recipeSchema', () => {
           id: 'preheat-oven',
           type: 'prep' as const,
           action: 'preheat',
-          inputs: [],
-          equipment: { use: 'large-pot', release: false },
-          time: 15,
-          activeTime: 1,
+          ingredients: [],
+          depends: [],
+          equipment: [{ use: 'large-pot', release: false }],
+          time: { min: 900 },
+          activeTime: { min: 60 },
+          scalable: true,
         },
       ],
     };
@@ -310,11 +322,10 @@ describe('parseRecipe', () => {
     const cyclic = {
       ...validRecipeInput,
       operations: [
-        { id: 'a', type: 'prep', action: 'x', inputs: ['b'], time: 1, activeTime: 1 },
-        { id: 'b', type: 'prep', action: 'y', inputs: ['a'], time: 1, activeTime: 1 },
+        { id: 'a', type: 'prep', action: 'x', ingredients: [], depends: ['b'], equipment: [], time: { min: 60 }, activeTime: { min: 60 }, scalable: true },
+        { id: 'b', type: 'prep', action: 'y', ingredients: [], depends: ['a'], equipment: [], time: { min: 60 }, activeTime: { min: 60 }, scalable: true },
       ],
       subProducts: [],
-      finishSteps: [{ action: 'done', inputs: ['a'] }],
     };
     expect(() => parseRecipe(cyclic)).toThrow('Invalid recipe DAG');
   });
@@ -360,9 +371,10 @@ describe('resolveIngredients', () => {
       id: 'test-op',
       type: 'cook',
       action: 'test',
-      inputs: ['nonexistent-ref', 'spaghetti'],
-      time: 1,
-      activeTime: 1,
+      ingredients: ['spaghetti', 'nonexistent-ref'],
+      depends: [],
+      time: { min: 60 },
+      activeTime: { min: 60 },
     });
     const result = resolveIngredients(testOp, validRecipe);
     expect(result).toHaveLength(1);
@@ -382,7 +394,6 @@ describe('z.toJSONSchema generation', () => {
     expect(jsonSchema.properties).toHaveProperty('meta');
     expect(jsonSchema.properties).toHaveProperty('ingredients');
     expect(jsonSchema.properties).toHaveProperty('operations');
-    expect(jsonSchema.properties).toHaveProperty('finishSteps');
     expect(jsonSchema.description).toBe('Structured recipe data model for the Recipe Visualization App');
   });
 
@@ -433,7 +444,6 @@ describe('cross-entity validation (superRefine)', () => {
         { ...validRecipeInput.operations[1]!, id: validRecipeInput.operations[0]!.id },
       ],
       subProducts: [],
-      finishSteps: [{ action: 'done', inputs: ['dice-onion'] }],
     };
     const result = recipeSchema.safeParse(bad);
     expect(result.success).toBe(false);
@@ -460,11 +470,10 @@ describe('cross-entity validation (superRefine)', () => {
       operations: [
         {
           ...validRecipeInput.operations[0],
-          equipment: { use: 'nonexistent-equipment', release: true },
+          equipment: [{ use: 'nonexistent-equipment', release: true }],
         },
       ],
       subProducts: [],
-      finishSteps: [{ action: 'done', inputs: ['dice-onion'] }],
     };
     const result = recipeSchema.safeParse(bad);
     expect(result.success).toBe(false);

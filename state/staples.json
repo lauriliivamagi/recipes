@@ -1,0 +1,8 @@
+{
+  "items": [
+    { "name": "salt", "group": "spices" },
+    { "name": "black pepper", "group": "spices" },
+    { "name": "olive oil", "group": "pantry" },
+    { "name": "garlic", "group": "vegetables" }
+  ]
+}

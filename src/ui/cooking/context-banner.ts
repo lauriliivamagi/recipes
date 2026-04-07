@@ -52,7 +52,7 @@ export class ContextBanner extends LitElement {
     if (!this.operation) return nothing;
 
     const op = this.operation;
-    const timeLabel = op.time > 0 ? ` \u2014 ${formatMinutes(op.time)}` : '';
+    const timeLabel = op.time.min > 0 ? ` \u2014 ${formatMinutes(op.time.min / 60)}` : '';
 
     return html`
       <div class="context-banner">

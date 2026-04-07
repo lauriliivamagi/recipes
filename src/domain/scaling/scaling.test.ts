@@ -3,9 +3,10 @@ import { normalizeUnit, convertUnit } from './unit-convert.js';
 import { convertTemperature } from './temperature.js';
 import { roundQuantity } from './round.js';
 import { scaleQuantity, scaleTime } from './scale.js';
-import type { Quantity } from '../recipe/types.js';
+import type { Quantity, TimeRange } from '../recipe/types.js';
 
 const q = (amount: number, unit: string): Quantity => ({ amount, unit });
+const tr = (min: number, max?: number): TimeRange => max !== undefined ? { min, max } : { min };
 
 describe('normalizeUnit', () => {
   it('resolves plural alias to canonical', () => {
@@ -159,19 +160,25 @@ describe('scaleQuantity', () => {
 
 describe('scaleTime', () => {
   it('returns unchanged for non-scalable', () => {
-    expect(scaleTime(10, false, 2)).toBe(10);
+    expect(scaleTime(tr(600), false, 2)).toEqual(tr(600));
   });
 
   it('scales down linearly', () => {
-    expect(scaleTime(60, true, 0.5)).toBe(30);
+    expect(scaleTime(tr(3600), true, 0.5)).toEqual(tr(1800));
   });
 
   it('has minimum of 1 when scaling down', () => {
-    expect(scaleTime(1, true, 0.1)).toBe(1);
+    expect(scaleTime(tr(1), true, 0.1)).toEqual(tr(1));
   });
 
   it('scales up with sqrt', () => {
-    expect(scaleTime(60, true, 4)).toBe(120);
-    expect(scaleTime(30, true, 2)).toBe(Math.round(30 * Math.sqrt(2)));
+    expect(scaleTime(tr(3600), true, 4)).toEqual(tr(7200));
+    expect(scaleTime(tr(1800), true, 2)).toEqual(tr(Math.round(1800 * Math.sqrt(2))));
+  });
+
+  it('scales TimeRange with max', () => {
+    const result = scaleTime(tr(600, 900), true, 0.5);
+    expect(result.min).toBe(300);
+    expect(result.max).toBe(450);
   });
 });

@@ -38,14 +38,14 @@ describe('step navigation', () => {
 
 describe('timer', () => {
   it('createTimer sets correct totalSeconds', () => {
-    const timer = createTimer('op-1', 5);
+    const timer = createTimer('op-1', 300);
     expect(timer.totalSeconds).toBe(300);
     expect(timer.remainingSeconds).toBe(300);
     expect(timer.running).toBe(true);
   });
 
   it('tickTimer decrements by 1', () => {
-    const timer = createTimer('op-1', 1);
+    const timer = createTimer('op-1', 60);
     const ticked = tickTimer(timer);
     expect(ticked.remainingSeconds).toBe(59);
     expect(ticked.running).toBe(true);
@@ -59,7 +59,7 @@ describe('timer', () => {
   });
 
   it('cancelTimer sets running to false', () => {
-    const timer = createTimer('op-1', 5);
+    const timer = createTimer('op-1', 300);
     const cancelled = cancelTimer(timer);
     expect(cancelled.running).toBe(false);
   });

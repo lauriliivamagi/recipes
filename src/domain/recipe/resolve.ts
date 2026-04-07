@@ -12,20 +12,26 @@ export function resolveIngredients(operation: Operation, recipe: Recipe): Ingred
   const ingredientMap = indexById(recipe.ingredients ?? []);
   const operationMap = indexById(recipe.operations ?? []);
   const result: Ingredient[] = [];
-  const seen = new Set<string>();
+  const seenIngredients = new Set<string>();
+  const seenOps = new Set<string>();
 
   function walk(op: Operation): void {
-    for (const ref of op.inputs ?? []) {
-      if (seen.has(ref)) continue;
-      seen.add(ref);
+    // Collect direct ingredient references
+    for (const ref of op.ingredients) {
+      if (seenIngredients.has(ref)) continue;
+      seenIngredients.add(ref);
       const ingredient = ingredientMap.get(ref);
       if (ingredient) {
         result.push(ingredient);
-      } else {
-        const upstream = operationMap.get(ref);
-        if (upstream) {
-          walk(upstream);
-        }
+      }
+    }
+    // Walk upstream operations
+    for (const ref of op.depends) {
+      if (seenOps.has(ref)) continue;
+      seenOps.add(ref);
+      const upstream = operationMap.get(ref);
+      if (upstream) {
+        walk(upstream);
       }
     }
   }

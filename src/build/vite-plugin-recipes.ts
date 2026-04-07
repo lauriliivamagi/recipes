@@ -8,9 +8,11 @@ import {
 import { join, dirname, relative, resolve } from 'node:path';
 import { computeSchedule, computeTotalTime } from '../domain/schedule/schedule.js';
 import { parseRecipe } from '../domain/recipe/parse.js';
+import { parsePool, parseThemeNights, parseStaples } from '../domain/planning/parse.js';
 import { loadI18n } from './i18n.js';
-import type { Recipe } from '../domain/recipe/types.js';
+import type { Recipe, TimeRange } from '../domain/recipe/types.js';
 import type { Phase } from '../domain/schedule/types.js';
+import type { Pool, ThemeNights, Staples } from '../domain/planning/types.js';
 
 interface RecipeMeta {
   title: string;
@@ -18,7 +20,7 @@ interface RecipeMeta {
   category: string;
   tags: string[];
   difficulty: string;
-  totalTime: { relaxed: number; optimized: number };
+  totalTime: { relaxed: TimeRange; optimized: TimeRange };
   servings: number;
   language: string;
   url: string;
@@ -54,11 +56,15 @@ function applyTemplate(template: string, vars: Record<string, string>): string {
 export function recipesPlugin(): Plugin {
   let root: string;
   let recipesDir: string;
+  let stateDir: string;
   let templatesDir: string;
   let i18nDir: string;
   let appVersion: string;
   let recipeMetas: RecipeMeta[] = [];
   let recipeDataMap: Map<string, RecipeData> = new Map();
+  let pool: Pool | null = null;
+  let themeNights: ThemeNights | null = null;
+  let staples: Staples | null = null;
 
   function processRecipe(file: string): void {
     const raw = readFileSync(file, 'utf8');
@@ -117,6 +123,25 @@ export function recipesPlugin(): Plugin {
     }
   }
 
+  function loadStateFile<T>(file: string, parser: (json: unknown) => T): T | null {
+    const path = join(stateDir, file);
+    if (!existsSync(path)) return null;
+    try {
+      const raw = readFileSync(path, 'utf8');
+      if (!raw.trim()) return null;
+      return parser(JSON.parse(raw));
+    } catch (e) {
+      console.warn(`Skipping state/${file}: ${(e as Error).message}`);
+      return null;
+    }
+  }
+
+  function loadAllState(): void {
+    pool = loadStateFile('pool.json', parsePool);
+    themeNights = loadStateFile('themes.json', parseThemeNights);
+    staples = loadStateFile('staples.json', parseStaples);
+  }
+
   function renderIndex(entryScript: string): string {
     const template = readFileSync(join(templatesDir, 'index.html'), 'utf8');
     const i18n = loadI18n('en', i18nDir);
@@ -124,6 +149,9 @@ export function recipesPlugin(): Plugin {
       TITLE: 'All Recipes',
       DESCRIPTION: 'Step-by-step cooking with timers and parallel task management',
       RECIPES_JSON: JSON.stringify(recipeMetas),
+      POOL_JSON: JSON.stringify(pool),
+      THEMES_JSON: JSON.stringify(themeNights),
+      STAPLES_JSON: JSON.stringify(staples),
       I18N_JSON: JSON.stringify(i18n),
       VERSION: appVersion,
       MANIFEST_PATH: 'manifest.webmanifest',
@@ -172,6 +200,7 @@ export function recipesPlugin(): Plugin {
     configResolved(config: ResolvedConfig) {
       root = config.root;
       recipesDir = resolve(root, 'recipes');
+      stateDir = resolve(root, 'state');
       templatesDir = resolve(root, 'templates');
       i18nDir = resolve(templatesDir, 'i18n');
       const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
@@ -180,10 +209,12 @@ export function recipesPlugin(): Plugin {
 
     buildStart() {
       processAllRecipes();
+      loadAllState();
     },
 
     configureServer(server: ViteDevServer) {
       processAllRecipes();
+      loadAllState();
 
       // Watch recipes directory for changes
       server.watcher.add(recipesDir);
@@ -209,6 +240,17 @@ export function recipesPlugin(): Plugin {
           server.ws.send({ type: 'full-reload' });
         }
       });
+
+      // Watch state directory for changes
+      if (existsSync(stateDir)) {
+        server.watcher.add(stateDir);
+        server.watcher.on('change', (path: string) => {
+          if (path.startsWith(stateDir) && path.endsWith('.json')) {
+            loadAllState();
+            server.ws.send({ type: 'full-reload' });
+          }
+        });
+      }
 
       // Pre-hook: serve all generated pages before Vite's built-in SPA
       // fallback can intercept them. Static assets (icons) are served by

@@ -9,7 +9,7 @@ import type {
   Equipment,
   Operation,
   SubProduct,
-  FinishStep,
+  TimeRange,
   OperationId,
   IngredientId,
   EquipmentId,
@@ -32,6 +32,10 @@ export const slug = (s: string) => s as RecipeSlug;
 // ---------------------------------------------------------------------------
 export const qty = (amount: number, unit: string): Quantity => ({ amount, unit });
 
+/** Create a TimeRange from seconds. Pass one number for exact, two for range. */
+export const secs = (min: number, max?: number): TimeRange =>
+  max !== undefined ? { min, max } : { min };
+
 // ---------------------------------------------------------------------------
 // Factory for flat-format ingredient (matches JSON input shape)
 // ---------------------------------------------------------------------------
@@ -44,23 +48,30 @@ export function ing(id: string, name: string, quantity: number, unit: string, gr
 // ---------------------------------------------------------------------------
 export function op(fields: {
   id: string;
-  type: 'prep' | 'cook';
+  type: 'prep' | 'cook' | 'rest' | 'assemble';
   action: string;
-  inputs: string[];
-  time: number;
-  activeTime: number;
-  equipment?: { use: string; release: boolean };
+  ingredients?: string[];
+  depends?: string[];
+  time: TimeRange;
+  activeTime: TimeRange;
+  equipment?: { use: string; release: boolean }[];
   scalable?: boolean;
-  heat?: string;
+  temperature?: { min: number; max?: number; unit: 'C' | 'F' };
   details?: string;
   output?: string;
 }): Operation {
   return {
-    ...fields,
     id: opId(fields.id),
-    equipment: fields.equipment
-      ? { use: eqId(fields.equipment.use), release: fields.equipment.release }
-      : undefined,
+    type: fields.type,
+    action: fields.action,
+    ingredients: (fields.ingredients ?? []).map(ingId),
+    depends: (fields.depends ?? []).map(opId),
+    equipment: (fields.equipment ?? []).map(e => ({ use: eqId(e.use), release: e.release })),
+    time: fields.time,
+    activeTime: fields.activeTime,
+    scalable: fields.scalable ?? true,
+    temperature: fields.temperature,
+    details: fields.details,
     output: fields.output ? spId(fields.output) : undefined,
   };
 }
@@ -88,7 +99,6 @@ export function makeRecipe(overrides: {
   equipment?: Equipment[];
   operations?: Operation[];
   subProducts?: SubProduct[];
-  finishSteps?: FinishStep[];
 } = {}): Recipe {
   return {
     meta: {
@@ -98,7 +108,7 @@ export function makeRecipe(overrides: {
       originalText: '',
       tags: [],
       servings: 1,
-      totalTime: { relaxed: 0, optimized: 0 },
+      totalTime: { relaxed: { min: 0 }, optimized: { min: 0 } },
       difficulty: 'easy',
       ...overrides.meta,
     },
@@ -106,6 +116,5 @@ export function makeRecipe(overrides: {
     equipment: overrides.equipment ?? [],
     operations: overrides.operations ?? [],
     subProducts: overrides.subProducts ?? [],
-    finishSteps: overrides.finishSteps ?? [],
   };
 }

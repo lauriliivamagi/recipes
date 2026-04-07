@@ -5,7 +5,7 @@ test.describe('Catalog', () => {
     await page.goto('/');
     await expect(page.locator('h1')).toContainText('All Recipes');
     const cards = page.locator('recipe-card');
-    await expect(cards).toHaveCount(2);
+    await expect(cards).toHaveCount(3);
   });
 
   test('search filters recipes by title', async ({ page }) => {
@@ -20,8 +20,8 @@ test.describe('Catalog', () => {
     await page.goto('/');
     await page.click('.tag-pill:has-text("weeknight")');
     const cards = page.locator('recipe-card');
-    await expect(cards).toHaveCount(1);
-    await expect(cards.first()).toContainText('Bolognese');
+    await expect(cards).toHaveCount(2);
+    await expect(page.locator('recipe-card:has-text("Bolognese")')).toBeVisible();
   });
 
   test('recipe card links to recipe page', async ({ page }) => {

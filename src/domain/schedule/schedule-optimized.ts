@@ -1,4 +1,4 @@
-import type { Operation, FinishStep } from '../recipe/types.js';
+import type { Operation, OperationId } from '../recipe/types.js';
 import type { Phase } from './types.js';
 import { topoSort } from './dag.js';
 import { findCriticalPath } from './critical-path.js';
@@ -14,7 +14,7 @@ function findEarlyPrepOps(
 ): Set<string> {
   const firstPassiveIdx = mainChainOpsInOrder.findIndex(
     (op) =>
-      op.activeTime != null && op.time > 0 && op.activeTime < op.time * 0.25,
+      op.activeTime.min < op.time.min * 0.25,
   );
   const opsToCheck =
     firstPassiveIdx >= 0
@@ -26,7 +26,7 @@ function findEarlyPrepOps(
   function walkBack(opId: string): void {
     const op = operationMap.get(opId);
     if (!op) return;
-    for (const ref of op.inputs || []) {
+    for (const ref of op.depends) {
       if (needed.has(ref)) continue;
       const dep = operationMap.get(ref);
       if (dep && dep.type === 'prep') {
@@ -62,11 +62,11 @@ function groupIntoChains(
       component.push(operationMap.get(id)!);
 
       for (const other of ops) {
-        if (!visited.has(other.id) && (other.inputs || []).includes(id))
+        if (!visited.has(other.id) && other.depends.includes(id as OperationId))
           toVisit.push(other.id);
       }
       const thisOp = operationMap.get(id)!;
-      for (const ref of thisOp.inputs || []) {
+      for (const ref of thisOp.depends) {
         if (opIds.has(ref) && !visited.has(ref)) toVisit.push(ref);
       }
     }
@@ -76,7 +76,7 @@ function groupIntoChains(
     const compInDeg = new Map<string, number>();
     for (const op of component) {
       let deg = 0;
-      for (const ref of op.inputs || []) {
+      for (const ref of op.depends) {
         if (compIds.has(ref)) deg++;
       }
       compInDeg.set(op.id, deg);
@@ -90,7 +90,7 @@ function groupIntoChains(
       const n = compQueue.shift()!;
       compSorted.push(operationMap.get(n)!);
       for (const op of component) {
-        if ((op.inputs || []).includes(n)) {
+        if (op.depends.includes(n as OperationId)) {
           compInDeg.set(op.id, compInDeg.get(op.id)! - 1);
           if (compInDeg.get(op.id) === 0) compQueue.push(op.id);
         }
@@ -106,25 +106,32 @@ function canScheduleParallel(
   op: Operation,
   busyEquipment: Set<string>,
 ): boolean {
-  if (!op.equipment) return true;
-  return !busyEquipment.has(op.equipment.use);
+  return op.equipment.every((eq) => !busyEquipment.has(eq.use));
 }
 
 export function buildOptimizedSchedule(
   prepOps: Operation[],
   cookOps: Operation[],
-  finishSteps: FinishStep[],
   allOperations: Operation[],
   operationMap: Map<string, Operation>,
 ): Phase[] {
   const phases: Phase[] = [];
 
-  const criticalPathIds = findCriticalPath(cookOps, operationMap);
+  // Partition rest and assemble operations out of cookOps
+  const actualCookOps = cookOps.filter(
+    (op) => op.type !== 'rest' && op.type !== 'assemble',
+  );
+  const restOps = allOperations.filter((op) => op.type === 'rest');
+  const assembleOps = allOperations.filter((op) => op.type === 'assemble');
+
+  const criticalPathIds = findCriticalPath(actualCookOps, operationMap);
   const sorted = topoSort(allOperations);
   const mainCookOps = sorted
     .filter((id) => criticalPathIds.has(id))
     .map((id) => operationMap.get(id)!);
-  const parallelCookOps = cookOps.filter((op) => !criticalPathIds.has(op.id));
+  const parallelCookOps = actualCookOps.filter(
+    (op) => !criticalPathIds.has(op.id),
+  );
   let parallelChains = groupIntoChains(parallelCookOps, operationMap);
 
   const earlyPrepIds = findEarlyPrepOps(mainCookOps, operationMap);
@@ -135,7 +142,7 @@ export function buildOptimizedSchedule(
     phases.push({
       name: 'Prep',
       type: 'prep',
-      time: earlyPrep.reduce((sum, op) => sum + op.time, 0),
+      time: { min: earlyPrep.reduce((sum, op) => sum + op.time.min, 0) },
       operations: earlyPrep,
       parallel: false,
     });
@@ -149,7 +156,7 @@ export function buildOptimizedSchedule(
     phases.push({
       name: currentCookGroup.map((op) => capitalize(op.action)).join(' + '),
       type: 'cook',
-      time: currentCookGroup.reduce((s, op) => s + op.time, 0),
+      time: { min: currentCookGroup.reduce((s, op) => s + op.time.min, 0) },
       operations: [...currentCookGroup],
       parallel: false,
     });
@@ -157,15 +164,15 @@ export function buildOptimizedSchedule(
   }
 
   for (const op of mainCookOps) {
-    const isPassive =
-      op.activeTime !== undefined && op.activeTime < op.time * 0.25;
+    const isPassive = op.activeTime.min < op.time.min * 0.25;
 
     if (isPassive) {
       flushCookGroup();
-      const idleTime = op.time - (op.activeTime ?? 0);
+      const idleTime = op.time.min - op.activeTime.min;
       const busyEquipment = new Set<string>();
-      if (op.equipment && !op.equipment.release)
-        busyEquipment.add(op.equipment.use);
+      for (const eq of op.equipment) {
+        if (!eq.release) busyEquipment.add(eq.use);
+      }
 
       const scheduledParallel: Operation[] = [];
       const alreadyScheduledIds = new Set<string>([
@@ -176,12 +183,14 @@ export function buildOptimizedSchedule(
       const remainingDeferred: Operation[] = [];
       for (const dOp of deferredQueue) {
         if (
-          dOp.time <= idleTime &&
+          dOp.time.min <= idleTime &&
           canScheduleParallel(dOp, busyEquipment)
         ) {
           scheduledParallel.push(dOp);
           alreadyScheduledIds.add(dOp.id);
-          if (dOp.equipment) busyEquipment.add(dOp.equipment.use);
+          for (const eq of dOp.equipment) {
+            busyEquipment.add(eq.use);
+          }
         } else {
           remainingDeferred.push(dOp);
         }
@@ -190,12 +199,12 @@ export function buildOptimizedSchedule(
 
       const remainingChains: Operation[][] = [];
       for (const chain of parallelChains) {
-        const chainTime = chain.reduce((s, cop) => s + cop.time, 0);
+        const chainTime = chain.reduce((s, cop) => s + cop.time.min, 0);
         const noEquipConflict = chain.every((cop) =>
           canScheduleParallel(cop, busyEquipment),
         );
         const prepDepsSatisfied = chain.every((cop) =>
-          (cop.inputs || []).every((ref) => {
+          cop.depends.every((ref) => {
             const dep = operationMap.get(ref);
             if (!dep || dep.type !== 'prep') return true;
             return earlyPrepIds.has(ref) || alreadyScheduledIds.has(ref);
@@ -205,7 +214,9 @@ export function buildOptimizedSchedule(
           scheduledParallel.push(...chain);
           for (const cop of chain) {
             alreadyScheduledIds.add(cop.id);
-            if (cop.equipment) busyEquipment.add(cop.equipment.use);
+            for (const eq of cop.equipment) {
+              busyEquipment.add(eq.use);
+            }
           }
         } else {
           remainingChains.push(chain);
@@ -219,7 +230,7 @@ export function buildOptimizedSchedule(
           ? `${capitalize(op.action)} + Parallel`
           : capitalize(op.action),
         type: 'simmer',
-        time: op.time,
+        time: { min: op.time.min },
         operations: [op],
         parallel: hasParallel,
         ...(hasParallel ? { parallelOps: scheduledParallel } : {}),
@@ -234,7 +245,7 @@ export function buildOptimizedSchedule(
     phases.push({
       name: chain.map((op) => capitalize(op.action)).join(' + '),
       type: 'cook',
-      time: chain.reduce((s, op) => s + op.time, 0),
+      time: { min: chain.reduce((s, op) => s + op.time.min, 0) },
       operations: chain,
       parallel: false,
     });
@@ -244,21 +255,30 @@ export function buildOptimizedSchedule(
     phases.push({
       name: 'Remaining Prep',
       type: 'prep',
-      time: deferredQueue.reduce((sum, op) => sum + op.time, 0),
+      time: { min: deferredQueue.reduce((sum, op) => sum + op.time.min, 0) },
       operations: deferredQueue,
       parallel: false,
     });
   }
 
-  if (finishSteps.length > 0) {
+  // Rest operations get their own phases
+  for (const op of restOps) {
     phases.push({
-      name: 'Finish',
-      type: 'finish',
-      time: finishSteps.reduce(
-        (sum, s) => sum + ((s as Operation).time || 1),
-        0,
-      ),
-      operations: finishSteps,
+      name: capitalize(op.action),
+      type: 'rest',
+      time: { min: op.time.min },
+      operations: [op],
+      parallel: false,
+    });
+  }
+
+  // Assemble operations go at the end
+  if (assembleOps.length > 0) {
+    phases.push({
+      name: assembleOps.map((op) => capitalize(op.action)).join(' + '),
+      type: 'assemble',
+      time: { min: assembleOps.reduce((sum, op) => sum + op.time.min, 0) },
+      operations: assembleOps,
       parallel: false,
     });
   }

@@ -1,12 +1,10 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { ContextConsumer } from '@lit/context';
-import { classMap } from 'lit/directives/class-map.js';
 import { designTokens, resetStyles, baseStyles } from '../shared/styles.js';
 import { scaleFactorContext } from '../contexts/recipe-contexts.js';
 import type { Phase } from '../../domain/schedule/types.js';
-import type { Operation, FinishStep } from '../../domain/recipe/types.js';
-import { scaleQuantity } from '../../domain/scaling/scale.js';
+import type { Operation } from '../../domain/recipe/types.js';
 import { formatMinutes } from '../../domain/cooking/timer.js';
 
 @customElement('phase-card')
@@ -187,10 +185,6 @@ export class PhaseCard extends LitElement {
     return this._scaleFactorConsumer.value ?? 1;
   }
 
-  private _isOperation(op: Operation | FinishStep): op is Operation {
-    return 'id' in op;
-  }
-
   private _jumpToPhase() {
     this.dispatchEvent(
       new CustomEvent('jump-to-phase', {
@@ -201,38 +195,26 @@ export class PhaseCard extends LitElement {
     );
   }
 
-  private _renderOperation(op: Operation | FinishStep) {
-    if (this._isOperation(op)) {
-      return html`
-        <div class="phase-op">
-          <div class="phase-op-row">
-            <span class="op-action-tag">${op.action}</span>
-            <span class="op-text">${op.details ?? op.action}${
-              op.time > 0 && op.activeTime < op.time
-                ? html`<span class="passive-badge">passive</span>`
-                : nothing
-            }</span>
-          </div>
-          ${op.time > 0 || op.equipment
-            ? html`
-                <div class="op-meta">
-                  ${op.time > 0 ? html`<span class="op-meta-tag">&#9202; ${formatMinutes(op.time)}</span>` : nothing}
-                  ${op.equipment ? html`<span class="op-meta-tag">&#127859; ${op.equipment.use}</span>` : nothing}
-                  ${op.heat ? html`<span class="op-meta-tag">&#128293; ${op.heat}</span>` : nothing}
-                </div>
-              `
-            : nothing}
-        </div>
-      `;
-    }
-
-    // FinishStep
+  private _renderOperation(op: Operation) {
     return html`
       <div class="phase-op">
         <div class="phase-op-row">
           <span class="op-action-tag">${op.action}</span>
-          <span class="op-text">${op.details ?? op.action}</span>
+          <span class="op-text">${op.details ?? op.action}${
+            op.time.min > 0 && op.activeTime.min < op.time.min
+              ? html`<span class="passive-badge">passive</span>`
+              : nothing
+          }</span>
         </div>
+        ${op.time.min > 0 || op.equipment.length > 0
+          ? html`
+              <div class="op-meta">
+                ${op.time.min > 0 ? html`<span class="op-meta-tag">&#9202; ${formatMinutes(op.time.min / 60)}</span>` : nothing}
+                ${op.equipment.map(e => html`<span class="op-meta-tag">&#127859; ${e.use}</span>`)}
+                ${op.temperature ? html`<span class="op-meta-tag">&#128293; ${op.temperature.max ? `${op.temperature.min}\u2013${op.temperature.max}` : op.temperature.min}\u00B0${op.temperature.unit}</span>` : nothing}
+              </div>
+            `
+          : nothing}
       </div>
     `;
   }
@@ -246,7 +228,7 @@ export class PhaseCard extends LitElement {
       <div class="phase-card" @click=${this._jumpToPhase}>
         <div class="phase-header ${phaseType}">
           <span class="phase-label ${phaseType}">${this.phase.name}</span>
-          <span class="phase-time">${formatMinutes(this.phase.time)}</span>
+          <span class="phase-time">${formatMinutes(this.phase.time.min / 60)}</span>
         </div>
         <div class="phase-ops">
           ${this.phase.parallel && this.phase.parallelOps && this.phase.parallelOps.length > 1

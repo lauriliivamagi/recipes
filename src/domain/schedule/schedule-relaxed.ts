@@ -1,4 +1,4 @@
-import type { Operation, FinishStep, Recipe } from '../recipe/types.js';
+import type { Operation, Recipe } from '../recipe/types.js';
 import type { Phase } from './types.js';
 
 function capitalize(s: string): string {
@@ -20,7 +20,7 @@ function mapOpsToSubProducts(
     const op = operationMap.get(opId);
     if (!op) return 0;
     let maxD = 0;
-    for (const ref of op.inputs || []) {
+    for (const ref of op.depends || []) {
       if (operationMap.has(ref))
         maxD = Math.max(maxD, chainDepth(ref, visited));
     }
@@ -41,30 +41,11 @@ function mapOpsToSubProducts(
       map.set(opId, sp.name);
       const op = operationMap.get(opId);
       if (!op) return;
-      for (const ref of op.inputs || []) {
+      for (const ref of op.depends || []) {
         if (operationMap.has(ref)) walkBack(ref);
       }
     }
     walkBack(sp.finalOp);
-  }
-
-  for (const fs of recipe.finishSteps || []) {
-    const label = capitalize(fs.action || '');
-    for (const ref of fs.inputs || []) {
-      const visited2 = new Set<string>();
-      function walkBack2(opId: string): void {
-        if (visited2.has(opId)) return;
-        visited2.add(opId);
-        if (map.has(opId)) return;
-        map.set(opId, label);
-        const op = operationMap.get(opId);
-        if (!op) return;
-        for (const ref2 of op.inputs || []) {
-          if (operationMap.has(ref2)) walkBack2(ref2);
-        }
-      }
-      if (operationMap.has(ref)) walkBack2(ref);
-    }
   }
 
   return map;
@@ -95,10 +76,10 @@ function groupCookOpsBySubProduct(
     const aIds = new Set<string>(a.map((op) => op.id));
     const bIds = new Set<string>(b.map((op) => op.id));
     const bDependsOnA = b.some((op) =>
-      (op.inputs || []).some((ref) => aIds.has(ref)),
+      (op.depends || []).some((ref) => aIds.has(ref)),
     );
     const aDependsOnB = a.some((op) =>
-      (op.inputs || []).some((ref) => bIds.has(ref)),
+      (op.depends || []).some((ref) => bIds.has(ref)),
     );
     if (bDependsOnA && !aDependsOnB) return -1;
     if (aDependsOnB && !bDependsOnA) return 1;
@@ -117,7 +98,7 @@ function emitCookPhases(ops: Operation[], phases: Phase[]): void {
     phases.push({
       name: currentGroup.map((op) => capitalize(op.action)).join(' + '),
       type: 'cook',
-      time: currentGroup.reduce((s, op) => s + op.time, 0),
+      time: { min: currentGroup.reduce((s, op) => s + op.time.min, 0) },
       operations: [...currentGroup],
       parallel: false,
     });
@@ -126,7 +107,7 @@ function emitCookPhases(ops: Operation[], phases: Phase[]): void {
 
   for (const op of ops) {
     const isPassive =
-      op.activeTime !== undefined && op.activeTime < op.time * 0.25;
+      op.activeTime !== undefined && op.activeTime.min < op.time.min * 0.25;
     if (isPassive) {
       flush();
       phases.push({
@@ -146,7 +127,8 @@ function emitCookPhases(ops: Operation[], phases: Phase[]): void {
 export function buildRelaxedSchedule(
   prepOps: Operation[],
   cookOps: Operation[],
-  finishSteps: FinishStep[],
+  restOps: Operation[],
+  assembleOps: Operation[],
   operationMap: Map<string, Operation>,
   recipe: Recipe,
 ): Phase[] {
@@ -157,7 +139,7 @@ export function buildRelaxedSchedule(
     phases.push({
       name: 'Prep',
       type: 'prep',
-      time: prepOps.reduce((sum, op) => sum + op.time, 0),
+      time: { min: prepOps.reduce((sum, op) => sum + op.time.min, 0) },
       operations: prepOps,
       parallel: false,
     });
@@ -170,16 +152,24 @@ export function buildRelaxedSchedule(
     emitCookPhases(group, phases);
   }
 
-  // Finish phase
-  if (finishSteps.length > 0) {
+  // Rest phases
+  for (const op of restOps) {
     phases.push({
-      name: 'Finish',
-      type: 'finish',
-      time: finishSteps.reduce(
-        (sum, s) => sum + ((s as Operation).time || 1),
-        0,
-      ),
-      operations: finishSteps,
+      name: capitalize(op.action),
+      type: 'rest',
+      time: op.time,
+      operations: [op],
+      parallel: false,
+    });
+  }
+
+  // Assemble phases
+  if (assembleOps.length > 0) {
+    phases.push({
+      name: assembleOps.map((op) => capitalize(op.action)).join(' + '),
+      type: 'assemble',
+      time: { min: assembleOps.reduce((sum, op) => sum + op.time.min, 0) },
+      operations: assembleOps,
       parallel: false,
     });
   }

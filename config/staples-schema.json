@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Ingredient name as it appears in recipes (e.g., \"salt\", \"olive oil\")"
+          },
+          "group": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Category matching ingredient.group for deduplication (e.g., \"pantry\", \"spices\")"
+          }
+        },
+        "required": [
+          "name",
+          "group"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Ingredients the household always has — excluded from generated shopping lists"
+    }
+  },
+  "required": [
+    "items"
+  ],
+  "additionalProperties": false,
+  "description": "Always-stocked pantry items excluded from shopping list generation",
+  "$id": "https://github.com/lauriliivamagi/recipes/blob/master/config/staples-schema.json"
+}

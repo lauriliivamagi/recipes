@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "themes": {
+      "type": "object",
+      "properties": {
+        "monday": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Cuisine theme for this day (e.g., \"Pasta\", \"Tacos\")"
+        },
+        "tuesday": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Cuisine theme for this day (e.g., \"Pasta\", \"Tacos\")"
+        },
+        "wednesday": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Cuisine theme for this day (e.g., \"Pasta\", \"Tacos\")"
+        },
+        "thursday": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Cuisine theme for this day (e.g., \"Pasta\", \"Tacos\")"
+        },
+        "friday": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Cuisine theme for this day (e.g., \"Pasta\", \"Tacos\")"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Map of weekday to cuisine theme. Unassigned days are omitted."
+    }
+  },
+  "required": [
+    "themes"
+  ],
+  "additionalProperties": false,
+  "description": "Theme night configuration — cuisine per weekday to reduce decision fatigue",
+  "$id": "https://github.com/lauriliivamagi/recipes/blob/master/config/themes-schema.json"
+}

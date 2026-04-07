@@ -46,14 +46,44 @@
           "type": "object",
           "properties": {
             "relaxed": {
-              "type": "number",
-              "minimum": 0,
-              "description": "Total time in minutes with all prep front-loaded (relaxed mode)"
+              "type": "object",
+              "properties": {
+                "min": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Lower bound (or exact) duration in seconds"
+                },
+                "max": {
+                  "description": "Upper bound duration in seconds",
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "min"
+              ],
+              "additionalProperties": false,
+              "description": "Total time in seconds with all prep front-loaded (relaxed mode)"
             },
             "optimized": {
-              "type": "number",
-              "minimum": 0,
-              "description": "Total time in minutes with prep distributed into idle windows (optimized mode)"
+              "type": "object",
+              "properties": {
+                "min": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Lower bound (or exact) duration in seconds"
+                },
+                "max": {
+                  "description": "Upper bound duration in seconds",
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "min"
+              ],
+              "additionalProperties": false,
+              "description": "Total time in seconds with prep distributed into idle windows (optimized mode)"
             }
           },
           "required": [
@@ -70,6 +100,15 @@
             "hard"
           ],
           "description": "Recipe difficulty level"
+        },
+        "energyTier": {
+          "description": "Derived from DAG decision count + active time",
+          "type": "string",
+          "enum": [
+            "zombie",
+            "moderate",
+            "project"
+          ]
         },
         "notes": {
           "description": "Optional free-form notes about the recipe",
@@ -151,6 +190,27 @@
             "minimum": 1,
             "maximum": 9007199254740991,
             "description": "Number of this item needed"
+          },
+          "capacity": {
+            "description": "Physical capacity (e.g., 5L pot, 30cm pan)",
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "description": "Capacity amount"
+              },
+              "unit": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Capacity unit (e.g., L, cm)"
+              }
+            },
+            "required": [
+              "amount",
+              "unit"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -169,7 +229,7 @@
         "type": "object",
         "properties": {
           "id": {
-            "description": "Unique identifier for this operation, referenced by other operations or finishSteps",
+            "description": "Unique identifier for this operation",
             "type": "string",
             "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
           },
@@ -177,58 +237,126 @@
             "type": "string",
             "enum": [
               "prep",
-              "cook"
+              "cook",
+              "rest",
+              "assemble"
             ],
-            "description": "Whether this is a preparation or cooking step"
+            "description": "Operation category"
           },
           "action": {
             "type": "string",
             "minLength": 1,
             "description": "Verb describing the operation (e.g., dice, sauté, simmer, boil)"
           },
-          "inputs": {
+          "ingredients": {
             "type": "array",
             "items": {
               "type": "string",
               "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
             },
-            "description": "Array of ingredient IDs or previous operation IDs forming the DAG edges"
+            "description": "Ingredient IDs consumed by this operation"
+          },
+          "depends": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+            },
+            "description": "Operation IDs that must complete before this one"
           },
           "equipment": {
-            "description": "Equipment used by this operation",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "use": {
+                  "description": "Equipment ID being used",
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+                },
+                "release": {
+                  "type": "boolean",
+                  "description": "If true, equipment is freed after this operation"
+                }
+              },
+              "required": [
+                "use",
+                "release"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Equipment used by this operation (empty array if none)"
+          },
+          "time": {
             "type": "object",
             "properties": {
-              "use": {
-                "description": "Equipment ID being used",
-                "type": "string",
-                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+              "min": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Lower bound (or exact) duration in seconds"
               },
-              "release": {
-                "type": "boolean",
-                "description": "If true, equipment is freed after this operation"
+              "max": {
+                "description": "Upper bound duration in seconds",
+                "type": "number",
+                "minimum": 0
               }
             },
             "required": [
-              "use",
-              "release"
+              "min"
             ],
-            "additionalProperties": false
-          },
-          "time": {
-            "type": "number",
-            "description": "Total duration of the operation in minutes"
+            "additionalProperties": false,
+            "description": "Total duration in seconds"
           },
           "activeTime": {
-            "type": "number",
-            "description": "Minutes of active attention required (0 for passive operations like simmering)"
+            "type": "object",
+            "properties": {
+              "min": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Lower bound (or exact) duration in seconds"
+              },
+              "max": {
+                "description": "Upper bound duration in seconds",
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "min"
+            ],
+            "additionalProperties": false,
+            "description": "Seconds of active attention required"
           },
           "scalable": {
-            "description": "If false, time does not change when scaling servings. Defaults to true.",
-            "type": "boolean"
+            "type": "boolean",
+            "description": "If false, time does not change when scaling servings"
           },
-          "heat": {
-            "description": "Heat level (e.g., low, medium, medium-high, high)",
-            "type": "string"
+          "temperature": {
+            "description": "Target temperature or range",
+            "type": "object",
+            "properties": {
+              "min": {
+                "type": "number",
+                "description": "Lower bound (or exact) temperature"
+              },
+              "max": {
+                "description": "Upper bound temperature",
+                "type": "number"
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "C",
+                  "F"
+                ],
+                "description": "Temperature unit"
+              }
+            },
+            "required": [
+              "min",
+              "unit"
+            ],
+            "additionalProperties": false
           },
           "details": {
             "description": "Additional instructions for this operation",
@@ -244,9 +372,12 @@
           "id",
           "type",
           "action",
-          "inputs",
+          "ingredients",
+          "depends",
+          "equipment",
           "time",
-          "activeTime"
+          "activeTime",
+          "scalable"
         ],
         "additionalProperties": false
       },
@@ -281,39 +412,6 @@
         "additionalProperties": false
       },
       "description": "Intermediate products created during cooking"
-    },
-    "finishSteps": {
-      "minItems": 1,
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "action": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Verb describing the finishing action"
-          },
-          "inputs": {
-            "minItems": 1,
-            "type": "array",
-            "items": {
-              "type": "string",
-              "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
-            },
-            "description": "Array of operation IDs (always operation IDs, never sub-product IDs)"
-          },
-          "details": {
-            "description": "Additional instructions for this finishing step",
-            "type": "string"
-          }
-        },
-        "required": [
-          "action",
-          "inputs"
-        ],
-        "additionalProperties": false
-      },
-      "description": "Final plating and serving steps"
     }
   },
   "required": [
@@ -321,8 +419,7 @@
     "ingredients",
     "equipment",
     "operations",
-    "subProducts",
-    "finishSteps"
+    "subProducts"
   ],
   "additionalProperties": false,
   "description": "Structured recipe data model for the Recipe Visualization App",

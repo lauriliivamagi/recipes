@@ -3,7 +3,6 @@ import { customElement, property } from 'lit/decorators.js';
 import { ContextConsumer } from '@lit/context';
 import { designTokens, resetStyles, baseStyles } from '../shared/styles.js';
 import { scaleFactorContext } from '../contexts/recipe-contexts.js';
-import { scaleQuantity } from '../../domain/scaling/scale.js';
 import type { Operation } from '../../domain/recipe/types.js';
 
 @customElement('secondary-task')
@@ -99,7 +98,7 @@ export class SecondaryTask extends LitElement {
           <div class="op-item">
             <div class="secondary-task-summary">
               <span class="op-action">${op.action}</span>
-              ${op.time > 0 ? html` \u2014 ${op.time} min` : nothing}
+              ${op.time.min > 0 ? html` \u2014 ${Math.round(op.time.min / 60)} min` : nothing}
             </div>
             ${op.details ? html`<div class="op-details">${op.details}</div>` : nothing}
           </div>

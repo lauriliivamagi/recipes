@@ -4,7 +4,8 @@ import { ContextConsumer } from '@lit/context';
 import { designTokens, resetStyles, baseStyles } from '../shared/styles.js';
 import { scaleFactorContext } from '../contexts/recipe-contexts.js';
 import { scaleQuantity } from '../../domain/scaling/scale.js';
-import type { Operation, FinishStep, Ingredient } from '../../domain/recipe/types.js';
+import type { Operation, Ingredient } from '../../domain/recipe/types.js';
+import { formatMinutes } from '../../domain/cooking/timer.js';
 
 @customElement('focus-card')
 export class FocusCard extends LitElement {
@@ -131,7 +132,7 @@ export class FocusCard extends LitElement {
     `,
   ];
 
-  @property({ type: Object }) accessor operation: Operation | FinishStep | null = null;
+  @property({ type: Object }) accessor operation: Operation | null = null;
 
   private _scaleFactorConsumer = new ContextConsumer(this, {
     context: scaleFactorContext,
@@ -145,17 +146,13 @@ export class FocusCard extends LitElement {
   @property({ type: Boolean }) accessor isPassive = false;
   @property({ type: String }) accessor contextAction = '';
 
-  private _isOperation(op: Operation | FinishStep): op is Operation {
-    return 'id' in op;
-  }
-
   private _renderHint(op: Operation | null) {
     if (!op) return nothing;
 
-    if (this.isPassive && op.time > 0) {
-      const idleMin = op.time - (op.activeTime ?? op.time);
-      if (idleMin > 0) {
-        return html`<div class="focus-hint">${idleMin} minutes of hands-free time.</div>`;
+    if (this.isPassive && op.time.min > 0) {
+      const idleSec = op.time.min - (op.activeTime?.min ?? op.time.min);
+      if (idleSec > 0) {
+        return html`<div class="focus-hint">${formatMinutes(idleSec / 60)} of hands-free time.</div>`;
       }
     }
 
@@ -172,9 +169,8 @@ export class FocusCard extends LitElement {
 
     const action = op.action;
     const details = op.details ?? '';
-    const isOp = this._isOperation(op);
-    const heat = isOp ? op.heat : undefined;
-    const equipment = isOp ? op.equipment : undefined;
+    const temperature = op.temperature;
+    const equipment = op.equipment;
 
     return html`
       <div class="focus-card">
@@ -195,19 +191,19 @@ export class FocusCard extends LitElement {
 
         ${details ? html`<div class="focus-details">${details}</div>` : nothing}
 
-        ${this._renderHint(isOp ? op as Operation : null)}
+        ${this._renderHint(op)}
 
         <div class="focus-tags">
-          ${heat ? html`
+          ${temperature ? html`
             <span class="focus-tag heat">
-              <span class="icon">&#128293;</span> ${heat}
+              <span class="icon">&#128293;</span> ${temperature.max ? `${temperature.min}\u2013${temperature.max}` : temperature.min}\u00B0${temperature.unit}
             </span>
           ` : nothing}
-          ${equipment ? html`
+          ${equipment.length > 0 ? equipment.map(e => html`
             <span class="focus-tag equipment">
-              <span class="icon">&#127859;</span> ${equipment.use}
+              <span class="icon">&#127859;</span> ${e.use}
             </span>
-          ` : nothing}
+          `) : nothing}
         </div>
       </div>
     `;

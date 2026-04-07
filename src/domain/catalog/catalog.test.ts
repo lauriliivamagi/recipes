@@ -3,9 +3,9 @@ import type { CatalogRecipe } from './types.js';
 import { filterRecipes } from './filter.js';
 
 const recipes: CatalogRecipe[] = [
-  { title: "Spaghetti Bolognese", slug: "spaghetti-bolognese", category: "italian", tags: ["italian", "pasta", "weeknight"], difficulty: "easy", totalTime: { relaxed: 75, optimized: 62 }, servings: 4, language: "en", url: "italian/spaghetti-bolognese.html" },
-  { title: "Classic Lasagne", slug: "classic-lasagne", category: "italian", tags: ["italian", "pasta", "weekend"], difficulty: "medium", totalTime: { relaxed: 120, optimized: 95 }, servings: 6, language: "en", url: "italian/classic-lasagne.html" },
-  { title: "Chicken Tikka Masala", slug: "chicken-tikka-masala", category: "indian", tags: ["indian", "curry", "weeknight"], difficulty: "medium", totalTime: { relaxed: 60, optimized: 45 }, servings: 4, language: "en", url: "indian/chicken-tikka-masala.html" },
+  { title: "Spaghetti Bolognese", slug: "spaghetti-bolognese", category: "italian", tags: ["italian", "pasta", "weeknight"], difficulty: "easy", totalTime: { relaxed: { min: 4500 }, optimized: { min: 3720 } }, servings: 4, language: "en", url: "italian/spaghetti-bolognese.html" },
+  { title: "Classic Lasagne", slug: "classic-lasagne", category: "italian", tags: ["italian", "pasta", "weekend"], difficulty: "medium", totalTime: { relaxed: { min: 7200 }, optimized: { min: 5700 } }, servings: 6, language: "en", url: "italian/classic-lasagne.html" },
+  { title: "Chicken Tikka Masala", slug: "chicken-tikka-masala", category: "indian", tags: ["indian", "curry", "weeknight"], difficulty: "medium", totalTime: { relaxed: { min: 3600 }, optimized: { min: 2700 } }, servings: 4, language: "en", url: "indian/chicken-tikka-masala.html" },
 ];
 
 describe('filterRecipes', () => {

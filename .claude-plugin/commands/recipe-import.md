@@ -17,7 +17,31 @@ Import a recipe from any source, parse it into structured JSON, and generate an 
 
 Check the `$ARGUMENTS` value:
 
-- **URL** (starts with `http`): Use Firecrawl or web fetch to scrape the page content. Extract the recipe text from the page, ignoring ads, navigation, and other non-recipe content.
+- **URL** (starts with `http`): Acquire the page HTML using **Firecrawl** (`firecrawl` tool with `formats: ["html"]`). Most recipe sites use Cloudflare or similar bot protection that blocks plain `fetch()`, so Firecrawl should be the primary fetch method.
+
+  Once you have the raw HTML, pass it through **Defuddle** for content extraction. Defuddle is an ESM-only Node.js library (`defuddle/node` with `linkedom` — both installed as project dependencies). Usage:
+
+  ```js
+  import { Defuddle } from 'defuddle/node';
+  const result = await Defuddle(html, url, {});
+  // result.content — clean HTML with ads/nav/sidebar removed
+  // result.schemaOrgData — array of JSON-LD objects (look for @type: "Recipe")
+  // result.title, result.author, result.language, result.domain
+  ```
+
+  If Firecrawl is unavailable, fall back to web fetch (may fail on Cloudflare-protected sites).
+
+  **Primary parsing input**: Use the Firecrawl **markdown** output directly — it reliably captures recipe content (ingredients, instructions) even when Defuddle extraction is minimal. Most recipe sites inject schema.org JSON-LD via JavaScript, so Defuddle rarely finds it in the static HTML.
+
+  When schema.org/Recipe data IS present (check `result.schemaOrgData`), it contains pre-structured fields that improve parsing accuracy:
+  - `recipeIngredient[]` — ingredient list (still needs parsing into id/name/quantity/unit/group)
+  - `recipeInstructions[]` — instruction ordering (still needs DAG wiring by the LLM)
+  - `prepTime`, `cookTime` — ISO 8601 durations for timing estimates
+  - `recipeYield` — serving count
+  - `recipeCuisine`, `recipeCategory` — tags and category suggestions
+
+  Pass both the schema.org data and clean markdown to Step 3. The schema.org fields serve as hints; the LLM still performs full DAG construction.
+
 - **File path** (ends with `.md`, `.txt`, `.pdf`, `.jpg`, `.png`): Read the file.
   - Markdown/text: read directly
   - PDF: use Claude PDF reading to extract text

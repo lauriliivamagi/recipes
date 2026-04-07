@@ -17,7 +17,7 @@ const mockRecipe: Recipe = {
     originalText: '',
     tags: ['test'],
     servings: 4,
-    totalTime: { relaxed: 60, optimized: 45 },
+    totalTime: { relaxed: { min: 3600 }, optimized: { min: 2700 } },
     difficulty: 'medium',
   },
   ingredients: [
@@ -27,41 +27,41 @@ const mockRecipe: Recipe = {
     { id: 'eq-1' as any, name: 'Pan', count: 1 },
   ],
   operations: [
-    { id: 'op-1' as any, type: 'prep', action: 'chop onions', inputs: ['ing-1'], time: 5, activeTime: 5 },
-    { id: 'op-2' as any, type: 'cook', action: 'sauté onions', inputs: ['op-1'], time: 10, activeTime: 3 },
-    { id: 'op-3' as any, type: 'cook', action: 'simmer sauce', inputs: ['op-2'], time: 20, activeTime: 2 },
+    { id: 'op-1' as any, type: 'prep', action: 'chop onions', ingredients: ['ing-1' as any], depends: [], equipment: [], time: { min: 300 }, activeTime: { min: 300 }, scalable: true },
+    { id: 'op-2' as any, type: 'cook', action: 'sauté onions', ingredients: [], depends: ['op-1' as any], equipment: [{ use: 'eq-1' as any, release: false }], time: { min: 600 }, activeTime: { min: 180 }, scalable: true },
+    { id: 'op-3' as any, type: 'cook', action: 'simmer sauce', ingredients: [], depends: ['op-2' as any], equipment: [{ use: 'eq-1' as any, release: true }], time: { min: 1200 }, activeTime: { min: 120 }, scalable: true },
+    { id: 'op-4' as any, type: 'assemble', action: 'plate and serve', ingredients: [], depends: ['op-3' as any], equipment: [], time: { min: 120 }, activeTime: { min: 120 }, scalable: true },
   ],
   subProducts: [],
-  finishSteps: [{ action: 'plate and serve', inputs: ['op-3'] }],
 };
 
 const mockPhases: Phase[] = [
   {
     name: 'Prep',
     type: 'prep',
-    time: 5,
+    time: { min: 300 },
     operations: [mockRecipe.operations[0]!],
     parallel: false,
   },
   {
     name: 'Cook',
     type: 'cook',
-    time: 10,
+    time: { min: 600 },
     operations: [mockRecipe.operations[1]!],
     parallel: false,
   },
   {
     name: 'Simmer',
     type: 'simmer',
-    time: 20,
+    time: { min: 1200 },
     operations: [mockRecipe.operations[2]!],
     parallel: false,
   },
   {
-    name: 'Finish',
-    type: 'finish',
-    time: 0,
-    operations: [mockRecipe.finishSteps[0]!],
+    name: 'Assemble',
+    type: 'assemble',
+    time: { min: 120 },
+    operations: [mockRecipe.operations[3]!],
     parallel: false,
   },
 ];

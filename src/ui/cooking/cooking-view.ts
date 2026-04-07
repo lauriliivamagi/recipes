@@ -4,7 +4,7 @@ import { styleMap } from 'lit/directives/style-map.js';
 import { designTokens, resetStyles, baseStyles } from '../shared/styles.js';
 import { resolveIngredients } from '../../domain/recipe/resolve.js';
 import type { Phase } from '../../domain/schedule/types.js';
-import type { Operation, FinishStep, Recipe } from '../../domain/recipe/types.js';
+import type { Operation, Recipe } from '../../domain/recipe/types.js';
 import './focus-card.js';
 import './timer-button.js';
 import './awareness-bar.js';
@@ -15,7 +15,7 @@ import './nav-buttons.js';
 interface CookingStep {
   phase: Phase;
   phaseIdx: number;
-  op: Operation | FinishStep;
+  op: Operation;
   opIdx: number;
   isParallel: boolean;
   parallelOps?: Operation[];
@@ -31,7 +31,7 @@ function buildCookingSteps(phases: Phase[]): CookingStep[] {
 
     if (phase.type === 'simmer' && phase.operations.length === 1) {
       const op = phase.operations[0]!;
-      activeContext = 'id' in op ? op : undefined;
+      activeContext = op;
 
       steps.push({
         phase, phaseIdx: pi,
@@ -190,18 +190,14 @@ export class CookingView extends LitElement {
 
   private _steps: CookingStep[] = [];
 
-  private _isOperation(op: Operation | FinishStep): op is Operation {
-    return 'id' in op;
-  }
-
   override willUpdate(changed: Map<string, unknown>) {
     if (changed.has('phases')) {
       this._steps = buildCookingSteps(this.phases);
     }
   }
 
-  private _getIngredients(op: Operation | FinishStep) {
-    if (!this.recipe || !this._isOperation(op)) return [];
+  private _getIngredients(op: Operation) {
+    if (!this.recipe) return [];
     return resolveIngredients(op, this.recipe);
   }
 
@@ -239,16 +235,13 @@ export class CookingView extends LitElement {
     const idx = Math.max(0, Math.min(this.currentStep, total - 1));
     const step = this._steps[idx]!;
     const op = step.op;
-    const isOp = this._isOperation(op);
-    const hasTime = isOp && op.time > 0;
+    const hasTime = op.time.min > 0;
     const ingredients = this._getIngredients(op);
     const progressPct = ((idx + 1) / total) * 100;
 
-    const timerForOp = isOp
-      ? this.activeTimers.find(t => t.opId === op.id)
-      : undefined;
+    const timerForOp = this.activeTimers.find(t => t.opId === op.id);
 
-    const isPassive = isOp && op.time > 0 && op.activeTime !== undefined && op.activeTime < op.time;
+    const isPassive = op.time.min > 0 && op.activeTime !== undefined && op.activeTime.min < op.time.min;
     const contextAction = step.contextOp?.action ?? '';
 
     return html`
@@ -276,8 +269,8 @@ export class CookingView extends LitElement {
         ${hasTime ? html`
           <div class="timer-row">
             <timer-button
-              .opId=${(op as Operation).id}
-              .time=${(op as Operation).time}
+              .opId=${op.id}
+              .time=${op.time.min}
               .running=${timerForOp?.remaining ? timerForOp.remaining > 0 : false}
               .remaining=${timerForOp?.remaining ?? 0}
             ></timer-button>

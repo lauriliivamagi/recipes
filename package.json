@@ -1,6 +1,6 @@
 {
   "name": "recipes",
-  "version": "1.11.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@lit/context": "^1.1.6",
+    "defuddle": "^0.15.0",
+    "linkedom": "^0.18.12",
     "lit": "^3.3.2",
     "xstate": "^5.30.0",
     "zod": "^4.3.6"

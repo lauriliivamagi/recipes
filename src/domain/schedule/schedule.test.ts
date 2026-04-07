@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { computeSchedule, computeTotalTime } from './schedule.js';
 import type { Phase } from './types.js';
-import { makeRecipe, ing, op, equip, subProd, slug } from '../recipe/test-helpers.js';
+import { makeRecipe, ing, op, equip, subProd, slug, secs } from '../recipe/test-helpers.js';
 
 const sampleRecipe = makeRecipe({
   meta: {
@@ -11,7 +11,7 @@ const sampleRecipe = makeRecipe({
     originalText: 'test',
     tags: ['italian'],
     servings: 4,
-    totalTime: { relaxed: 0, optimized: 0 },
+    totalTime: { relaxed: { min: 0 }, optimized: { min: 0 } },
     difficulty: 'easy' as const,
   },
   ingredients: [
@@ -29,22 +29,18 @@ const sampleRecipe = makeRecipe({
     equip('grater', 'Grater', 1),
   ],
   operations: [
-    op({ id: 'dice-onion', type: 'prep', action: 'dice', inputs: ['onion'], equipment: { use: 'cutting-board', release: true }, time: 3, activeTime: 3 }),
-    op({ id: 'mince-garlic', type: 'prep', action: 'mince', inputs: ['garlic'], equipment: { use: 'cutting-board', release: true }, time: 2, activeTime: 2 }),
-    op({ id: 'saute-veg', type: 'cook', action: 'sauté', inputs: ['dice-onion', 'mince-garlic'], equipment: { use: 'large-pan', release: false }, time: 5, activeTime: 5, heat: 'medium' }),
-    op({ id: 'brown-mince', type: 'cook', action: 'brown', inputs: ['saute-veg', 'mince'], equipment: { use: 'large-pan', release: false }, time: 8, activeTime: 8, heat: 'medium-high' }),
-    op({ id: 'simmer-sauce', type: 'cook', action: 'simmer', inputs: ['brown-mince', 'tomatoes'], equipment: { use: 'large-pan', release: true }, time: 20, activeTime: 0, scalable: false, heat: 'low', output: 'sauce' }),
-    op({ id: 'boil-pasta', type: 'cook', action: 'boil', inputs: ['spaghetti'], equipment: { use: 'large-pot', release: true }, time: 8, activeTime: 1, heat: 'high', output: 'pasta' }),
-    op({ id: 'grate-parmesan', type: 'prep', action: 'grate', inputs: ['parmesan'], equipment: { use: 'grater', release: true }, time: 2, activeTime: 2 }),
+    op({ id: 'dice-onion', type: 'prep', action: 'dice', ingredients: ['onion'], equipment: [{ use: 'cutting-board', release: true }], time: secs(180), activeTime: secs(180) }),
+    op({ id: 'mince-garlic', type: 'prep', action: 'mince', ingredients: ['garlic'], equipment: [{ use: 'cutting-board', release: true }], time: secs(120), activeTime: secs(120) }),
+    op({ id: 'saute-veg', type: 'cook', action: 'sauté', depends: ['dice-onion', 'mince-garlic'], equipment: [{ use: 'large-pan', release: false }], time: secs(300), activeTime: secs(300), temperature: { min: 170, unit: 'C' } }),
+    op({ id: 'brown-mince', type: 'cook', action: 'brown', ingredients: ['mince'], depends: ['saute-veg'], equipment: [{ use: 'large-pan', release: false }], time: secs(480), activeTime: secs(480), temperature: { min: 200, unit: 'C' } }),
+    op({ id: 'simmer-sauce', type: 'cook', action: 'simmer', ingredients: ['tomatoes'], depends: ['brown-mince'], equipment: [{ use: 'large-pan', release: true }], time: secs(1200), activeTime: secs(0), scalable: false, temperature: { min: 100, unit: 'C' }, output: 'sauce' }),
+    op({ id: 'boil-pasta', type: 'cook', action: 'boil', ingredients: ['spaghetti'], equipment: [{ use: 'large-pot', release: true }], time: secs(480), activeTime: secs(60), temperature: { min: 100, unit: 'C' }, output: 'pasta' }),
+    op({ id: 'grate-parmesan', type: 'prep', action: 'grate', ingredients: ['parmesan'], equipment: [{ use: 'grater', release: true }], time: secs(120), activeTime: secs(120) }),
+    op({ id: 'assemble-plate', type: 'assemble', action: 'plate and serve', depends: ['simmer-sauce', 'boil-pasta', 'grate-parmesan'], time: secs(120), activeTime: secs(120) }),
   ],
   subProducts: [
     subProd('sauce', 'Bolognese Sauce', 'simmer-sauce'),
     subProd('pasta', 'Cooked Spaghetti', 'boil-pasta'),
-  ],
-  finishSteps: [
-    { action: 'drain', inputs: ['boil-pasta'], details: 'Reserve pasta water' },
-    { action: 'toss', inputs: ['simmer-sauce', 'boil-pasta'], details: 'Combine' },
-    { action: 'top', inputs: ['grate-parmesan'], details: 'Serve' },
   ],
 });
 
@@ -61,7 +57,7 @@ describe('computeSchedule — relaxed', () => {
   });
 
   it('prep time is sum of individual prep times', () => {
-    expect(phases[0]!.time).toBe(3 + 2 + 2); // dice + mince + grate
+    expect(phases[0]!.time.min).toBe(180 + 120 + 120); // dice + mince + grate
   });
 
   it('no cook phase before prep', () => {
@@ -70,8 +66,8 @@ describe('computeSchedule — relaxed', () => {
     expect(prepIdx).toBeLessThan(firstCookIdx);
   });
 
-  it('finish is last phase', () => {
-    expect(phases[phases.length - 1]!.type).toBe('finish');
+  it('assemble is last phase', () => {
+    expect(phases[phases.length - 1]!.type).toBe('assemble');
   });
 });
 
@@ -82,7 +78,7 @@ describe('computeSchedule — optimized', () => {
   it('shorter total time than relaxed', () => {
     const relaxedTime = computeTotalTime(relaxedPhases);
     const optimizedTime = computeTotalTime(optimizedPhases);
-    expect(optimizedTime).toBeLessThanOrEqual(relaxedTime);
+    expect(optimizedTime.min).toBeLessThanOrEqual(relaxedTime.min);
   });
 
   it('has at least one phase with parallel ops', () => {
@@ -111,7 +107,7 @@ describe('computeSchedule — relaxed with ungrouped cook ops', () => {
       originalText: 'test',
       tags: [],
       servings: 2,
-      totalTime: { relaxed: 0, optimized: 0 },
+      totalTime: { relaxed: { min: 0 }, optimized: { min: 0 } },
       difficulty: 'easy' as const,
     },
     ingredients: [
@@ -120,11 +116,9 @@ describe('computeSchedule — relaxed with ungrouped cook ops', () => {
     ],
     equipment: [equip('wok', 'Wok', 1)],
     operations: [
-      op({ id: 'chop', type: 'prep', action: 'chop', inputs: ['veg'], time: 5, activeTime: 5 }),
-      op({ id: 'fry', type: 'cook', action: 'stir fry', inputs: ['chop', 'oil'], equipment: { use: 'wok', release: true }, time: 8, activeTime: 8, heat: 'high' }),
-    ],
-    finishSteps: [
-      { action: 'plate', inputs: ['fry'], details: 'Serve hot' },
+      op({ id: 'chop', type: 'prep', action: 'chop', ingredients: ['veg'], time: secs(300), activeTime: secs(300) }),
+      op({ id: 'fry', type: 'cook', action: 'stir fry', ingredients: ['oil'], depends: ['chop'], equipment: [{ use: 'wok', release: true }], time: secs(480), activeTime: secs(480), temperature: { min: 230, unit: 'C' } }),
+      op({ id: 'plate', type: 'assemble', action: 'plate', depends: ['fry'], time: secs(60), activeTime: secs(60) }),
     ],
   });
 
@@ -145,7 +139,7 @@ describe('computeSchedule — optimized with no early prep', () => {
       originalText: 'test',
       tags: [],
       servings: 1,
-      totalTime: { relaxed: 0, optimized: 0 },
+      totalTime: { relaxed: { min: 0 }, optimized: { min: 0 } },
       difficulty: 'easy' as const,
     },
     ingredients: [
@@ -158,12 +152,10 @@ describe('computeSchedule — optimized with no early prep', () => {
       equip('pot', 'Pot', 1),
     ],
     operations: [
-      op({ id: 'fry', type: 'cook', action: 'fry', inputs: ['a'], equipment: { use: 'pan', release: true }, time: 10, activeTime: 10, heat: 'high' }),
-      op({ id: 'boil', type: 'cook', action: 'boil', inputs: ['b'], equipment: { use: 'pot', release: true }, time: 8, activeTime: 8, heat: 'high' }),
-      op({ id: 'garnish', type: 'prep', action: 'chop garnish', inputs: ['c'], time: 2, activeTime: 2 }),
-    ],
-    finishSteps: [
-      { action: 'plate', inputs: ['fry', 'boil', 'garnish'], details: '' },
+      op({ id: 'fry', type: 'cook', action: 'fry', ingredients: ['a'], equipment: [{ use: 'pan', release: true }], time: secs(600), activeTime: secs(600), temperature: { min: 230, unit: 'C' } }),
+      op({ id: 'boil', type: 'cook', action: 'boil', ingredients: ['b'], equipment: [{ use: 'pot', release: true }], time: secs(480), activeTime: secs(480), temperature: { min: 100, unit: 'C' } }),
+      op({ id: 'garnish', type: 'prep', action: 'chop garnish', ingredients: ['c'], time: secs(120), activeTime: secs(120) }),
+      op({ id: 'plate', type: 'assemble', action: 'plate', depends: ['fry', 'boil', 'garnish'], time: secs(60), activeTime: secs(60) }),
     ],
   });
 
@@ -187,7 +179,7 @@ describe('computeSchedule — optimized with equipment conflicts', () => {
       originalText: 'test',
       tags: [],
       servings: 1,
-      totalTime: { relaxed: 0, optimized: 0 },
+      totalTime: { relaxed: { min: 0 }, optimized: { min: 0 } },
       difficulty: 'easy' as const,
     },
     ingredients: [
@@ -197,13 +189,11 @@ describe('computeSchedule — optimized with equipment conflicts', () => {
     ],
     equipment: [equip('pan', 'Pan', 1)],
     operations: [
-      op({ id: 'fry', type: 'cook', action: 'fry', inputs: ['a'], equipment: { use: 'pan', release: false }, time: 5, activeTime: 5, heat: 'high' }),
-      op({ id: 'simmer', type: 'cook', action: 'simmer', inputs: ['fry'], equipment: { use: 'pan', release: true }, time: 30, activeTime: 2, heat: 'low' }),
-      op({ id: 'sear', type: 'cook', action: 'sear', inputs: ['b'], equipment: { use: 'pan', release: true }, time: 5, activeTime: 5, heat: 'high' }),
-      op({ id: 'garnish', type: 'prep', action: 'chop', inputs: ['c'], time: 2, activeTime: 2 }),
-    ],
-    finishSteps: [
-      { action: 'plate', inputs: ['simmer', 'sear', 'garnish'], details: '' },
+      op({ id: 'fry', type: 'cook', action: 'fry', ingredients: ['a'], equipment: [{ use: 'pan', release: false }], time: secs(300), activeTime: secs(300), temperature: { min: 230, unit: 'C' } }),
+      op({ id: 'simmer', type: 'cook', action: 'simmer', depends: ['fry'], equipment: [{ use: 'pan', release: true }], time: secs(1800), activeTime: secs(120), temperature: { min: 100, unit: 'C' } }),
+      op({ id: 'sear', type: 'cook', action: 'sear', ingredients: ['b'], equipment: [{ use: 'pan', release: true }], time: secs(300), activeTime: secs(300), temperature: { min: 230, unit: 'C' } }),
+      op({ id: 'garnish', type: 'prep', action: 'chop', ingredients: ['c'], time: secs(120), activeTime: secs(120) }),
+      op({ id: 'plate', type: 'assemble', action: 'plate', depends: ['simmer', 'sear', 'garnish'], time: secs(60), activeTime: secs(60) }),
     ],
   });
 
@@ -230,25 +220,25 @@ describe('computeSchedule — optimized with equipment conflicts', () => {
 describe('computeTotalTime', () => {
   it('sequential phases sum correctly', () => {
     const phases: Phase[] = [
-      { name: 'A', type: 'prep', time: 5, operations: [], parallel: false },
-      { name: 'B', type: 'cook', time: 10, operations: [], parallel: false },
-      { name: 'C', type: 'finish', time: 3, operations: [], parallel: false },
+      { name: 'A', type: 'prep', time: { min: 300 }, operations: [], parallel: false },
+      { name: 'B', type: 'cook', time: { min: 600 }, operations: [], parallel: false },
+      { name: 'C', type: 'assemble', time: { min: 180 }, operations: [], parallel: false },
     ];
-    expect(computeTotalTime(phases)).toBe(18);
+    expect(computeTotalTime(phases).min).toBe(1080);
   });
 
   it('parallel phase with no parallelOps uses main time only', () => {
     const phases: Phase[] = [
-      { name: 'Simmer', type: 'simmer', time: 20, operations: [], parallel: true },
+      { name: 'Simmer', type: 'simmer', time: { min: 1200 }, operations: [], parallel: true },
     ];
-    expect(computeTotalTime(phases)).toBe(20);
+    expect(computeTotalTime(phases).min).toBe(1200);
   });
 
   it('parallel phase with empty parallelOps uses main time only', () => {
     const phases: Phase[] = [
-      { name: 'Simmer', type: 'simmer', time: 20, operations: [], parallel: true, parallelOps: [] },
+      { name: 'Simmer', type: 'simmer', time: { min: 1200 }, operations: [], parallel: true, parallelOps: [] },
     ];
-    expect(computeTotalTime(phases)).toBe(20);
+    expect(computeTotalTime(phases).min).toBe(1200);
   });
 
   it('parallel phases use max of main vs parallel time', () => {
@@ -256,16 +246,16 @@ describe('computeTotalTime', () => {
       {
         name: 'Simmer + Parallel',
         type: 'simmer',
-        time: 20,
+        time: { min: 1200 },
         operations: [],
         parallel: true,
         parallelOps: [
-          op({ id: 'p1', type: 'prep', action: 'grate', inputs: [], time: 2, activeTime: 2 }),
-          op({ id: 'p2', type: 'cook', action: 'boil', inputs: [], time: 8, activeTime: 1 }),
+          op({ id: 'p1', type: 'prep', action: 'grate', time: secs(120), activeTime: secs(120) }),
+          op({ id: 'p2', type: 'cook', action: 'boil', time: secs(480), activeTime: secs(60) }),
         ],
       },
     ];
-    // max(20, 2+8) = 20
-    expect(computeTotalTime(phases)).toBe(20);
+    // max(1200, 120+480) = 1200
+    expect(computeTotalTime(phases).min).toBe(1200);
   });
 });

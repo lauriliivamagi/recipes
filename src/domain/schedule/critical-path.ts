@@ -13,7 +13,7 @@ export function findCriticalPath(
     adj.set(op.id, []);
   }
   for (const op of cookOps) {
-    for (const ref of op.inputs || []) {
+    for (const ref of op.depends) {
       if (cookIds.has(ref)) {
         adj.get(ref)!.push(op.id);
         inDeg.set(op.id, inDeg.get(op.id)! + 1);
@@ -42,13 +42,13 @@ export function findCriticalPath(
     const op = operationMap.get(opId)!;
     let maxPrev = 0;
     let bestPred: string | null = null;
-    for (const ref of op.inputs || []) {
+    for (const ref of op.depends) {
       if (dist.has(ref) && dist.get(ref)! > maxPrev) {
         maxPrev = dist.get(ref)!;
         bestPred = ref;
       }
     }
-    dist.set(opId, maxPrev + op.time);
+    dist.set(opId, maxPrev + op.time.min);
     pred.set(opId, bestPred);
   }
 
