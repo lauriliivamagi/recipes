@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Recipe Import",
+  "version": "0.1.0",
+  "description": "Import recipes from any webpage into Recipe Visualizer",
+  "permissions": ["activeTab", "storage", "scripting", "downloads"],
+  "host_permissions": [
+    "https://api.anthropic.com/*",
+    "https://api.openai.com/*",
+    "https://generativelanguage.googleapis.com/*",
+    "http://localhost:11434/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  }
+}

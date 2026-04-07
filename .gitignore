@@ -4,6 +4,10 @@ node_modules/
 # Generated output (deploy separately or use gh-pages branch)
 site/
 
+# Chrome extension build output
+extension/dist/
+extension/node_modules/
+
 # Environment
 .env
 .env.local

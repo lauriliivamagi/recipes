@@ -1,0 +1,27 @@
+{
+  "name": "recipe-import-extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prebuild": "rm -rf dist",
+    "build": "EXT_ENTRY=content-script vite build && EXT_ENTRY=service-worker vite build && EXT_ENTRY=popup vite build",
+    "dev": "npm run build -- --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ai": "^6.0.149",
+    "@ai-sdk/anthropic": "^3.0.67",
+    "@ai-sdk/openai": "^3.0.51",
+    "@ai-sdk/google": "^3.0.59",
+    "idb": "^8.0.2",
+    "xstate": "^5.30.0",
+    "defuddle": "^0.15.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2",
+    "vite": "^8.0.3",
+    "@types/chrome": "^0.0.315"
+  }
+}
