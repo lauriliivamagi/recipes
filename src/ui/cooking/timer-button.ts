@@ -53,7 +53,7 @@ export class TimerButton extends LitElement {
       }));
     } else {
       this.dispatchEvent(new CustomEvent('start-timer', {
-        detail: { opId: this.opId, seconds: Math.round(this.time * 60) },
+        detail: { opId: this.opId, seconds: Math.round(this.time) },
         bubbles: true,
         composed: true,
       }));
@@ -63,7 +63,7 @@ export class TimerButton extends LitElement {
   override render() {
     const label = this.running
       ? `${formatTime(this.remaining)} remaining`
-      : `Start timer \u2014 ${this.time} min`;
+      : `Start timer \u2014 ${formatTime(this.time)}`;
 
     return html`
       <button

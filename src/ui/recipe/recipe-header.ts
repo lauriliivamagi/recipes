@@ -2,6 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { designTokens, resetStyles, baseStyles } from '../shared/styles.js';
 import type { ScheduleMode } from '../../domain/schedule/types.js';
+import type { TimeRange } from '../../domain/recipe/types.js';
 import { formatMinutes } from '../../domain/cooking/timer.js';
 
 @customElement('recipe-header')
@@ -90,13 +91,14 @@ export class RecipeHeader extends LitElement {
 
   @property() accessor title = '';
   @property() accessor difficulty: 'easy' | 'medium' | 'hard' = 'easy';
-  @property({ type: Object }) accessor totalTime: { relaxed: number; optimized: number } = { relaxed: 0, optimized: 0 };
+  @property({ type: Object }) accessor totalTime: { relaxed: TimeRange; optimized: TimeRange } = { relaxed: { min: 0 }, optimized: { min: 0 } };
   @property() accessor mode: ScheduleMode = 'relaxed';
   @property({ type: Array }) accessor tags: string[] = [];
   @property({ type: Number }) accessor servings = 1;
 
   override render() {
-    const time = this.mode === 'relaxed' ? this.totalTime.relaxed : this.totalTime.optimized;
+    const totalSec = this.mode === 'relaxed' ? this.totalTime.relaxed.min : this.totalTime.optimized.min;
+    const time = Math.round(totalSec / 60);
 
     return html`
       <header class="recipe-header">
