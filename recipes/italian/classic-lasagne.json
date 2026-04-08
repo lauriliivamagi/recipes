@@ -26,134 +26,172 @@
     {
       "id": "onion",
       "name": "Onion",
-      "quantity": 1,
-      "unit": "whole",
+      "quantity": {
+        "min": 1,
+        "unit": "whole"
+      },
       "group": "vegetables"
     },
     {
       "id": "carrot",
       "name": "Carrots",
-      "quantity": 2,
-      "unit": "whole",
+      "quantity": {
+        "min": 2,
+        "unit": "whole"
+      },
       "group": "vegetables"
     },
     {
       "id": "celery",
       "name": "Celery stalks",
-      "quantity": 2,
-      "unit": "whole",
+      "quantity": {
+        "min": 2,
+        "unit": "whole"
+      },
       "group": "vegetables"
     },
     {
       "id": "garlic",
       "name": "Garlic",
-      "quantity": 3,
-      "unit": "cloves",
+      "quantity": {
+        "min": 3,
+        "unit": "cloves"
+      },
       "group": "vegetables"
     },
     {
       "id": "mince",
       "name": "Beef mince",
-      "quantity": 500,
-      "unit": "g",
+      "quantity": {
+        "min": 500,
+        "unit": "g"
+      },
       "group": "meat"
     },
     {
       "id": "tomatoes",
       "name": "Crushed tomatoes",
-      "quantity": 400,
-      "unit": "g",
+      "quantity": {
+        "min": 400,
+        "unit": "g"
+      },
       "group": "canned"
     },
     {
       "id": "tomato-paste",
       "name": "Tomato paste",
-      "quantity": 70,
-      "unit": "g",
+      "quantity": {
+        "min": 70,
+        "unit": "g"
+      },
       "group": "canned"
     },
     {
       "id": "red-wine",
       "name": "Red wine",
-      "quantity": 120,
-      "unit": "ml",
+      "quantity": {
+        "min": 120,
+        "unit": "ml"
+      },
       "group": "pantry"
     },
     {
       "id": "olive-oil",
       "name": "Olive oil",
-      "quantity": 15,
-      "unit": "ml",
+      "quantity": {
+        "min": 15,
+        "unit": "ml"
+      },
       "group": "pantry"
     },
     {
       "id": "salt",
       "name": "Salt",
-      "quantity": 7,
-      "unit": "g",
+      "quantity": {
+        "min": 7,
+        "unit": "g"
+      },
       "group": "pantry"
     },
     {
       "id": "black-pepper",
       "name": "Black pepper",
-      "quantity": 2,
-      "unit": "g",
+      "quantity": {
+        "min": 2,
+        "unit": "g"
+      },
       "group": "pantry"
     },
     {
       "id": "oregano",
       "name": "Dried oregano",
-      "quantity": 3,
-      "unit": "g",
+      "quantity": {
+        "min": 3,
+        "unit": "g"
+      },
       "group": "pantry"
     },
     {
       "id": "butter",
       "name": "Butter",
-      "quantity": 60,
-      "unit": "g",
+      "quantity": {
+        "min": 60,
+        "unit": "g"
+      },
       "group": "dairy"
     },
     {
       "id": "flour",
       "name": "Plain flour",
-      "quantity": 60,
-      "unit": "g",
+      "quantity": {
+        "min": 60,
+        "unit": "g"
+      },
       "group": "pantry"
     },
     {
       "id": "milk",
       "name": "Whole milk",
-      "quantity": 750,
-      "unit": "ml",
+      "quantity": {
+        "min": 750,
+        "unit": "ml"
+      },
       "group": "dairy"
     },
     {
       "id": "nutmeg",
       "name": "Nutmeg",
-      "quantity": 1,
-      "unit": "g",
+      "quantity": {
+        "min": 1,
+        "unit": "g"
+      },
       "group": "pantry"
     },
     {
       "id": "lasagne-sheets",
       "name": "Dried lasagne sheets",
-      "quantity": 250,
-      "unit": "g",
+      "quantity": {
+        "min": 250,
+        "unit": "g"
+      },
       "group": "pasta"
     },
     {
       "id": "mozzarella",
       "name": "Mozzarella",
-      "quantity": 200,
-      "unit": "g",
+      "quantity": {
+        "min": 200,
+        "unit": "g"
+      },
       "group": "dairy"
     },
     {
       "id": "parmesan",
       "name": "Parmesan",
-      "quantity": 50,
-      "unit": "g",
+      "quantity": {
+        "min": 50,
+        "unit": "g"
+      },
       "group": "dairy"
     }
   ],

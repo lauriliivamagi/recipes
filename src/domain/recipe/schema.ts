@@ -5,7 +5,6 @@ import type {
   EquipmentId,
   SubProductId,
   RecipeSlug,
-  Quantity,
 } from './types.js';
 import tagsConfig from '../../../config/tags.json' with { type: 'json' };
 
@@ -40,26 +39,40 @@ function timeRangeMax(r: { min: number; max?: number }): number {
 }
 
 /**
- * Ingredient schema: JSON input has flat `quantity` + `unit` fields.
- * Transform merges them into a Quantity value object.
+ * Quantity schema — reused by ingredients and equipment capacity.
+ * Wire format = value object: { min, max?, unit }.
  */
-const ingredientSchema = z.object({
+const quantitySchema = z.object({
+  min: z.number().describe('Lower bound (or exact) amount'),
+  max: z.number().optional().describe('Upper bound of quantity range'),
+  unit: z.string().min(1).describe('Unit of measurement (metric preferred: g, ml, whole, cloves, etc.)'),
+}).strict().refine(
+  (r) => r.max === undefined || r.min <= r.max,
+  { error: () => 'quantity min must be <= max', path: ['max'] },
+);
+
+// Shared fields for primary ingredient and alternatives
+const ingredientBaseFields = {
   id: ingredientIdSchema.describe('Unique identifier for this ingredient, referenced by operations'),
   name: z.string().min(1).describe('Human-readable ingredient name'),
-  quantity: z.number().describe('Amount in the specified unit'),
-  unit: z.string().min(1).describe('Unit of measurement (metric preferred: g, ml, whole, cloves, etc.)'),
+  quantity: quantitySchema.describe('Amount with unit, optionally a range'),
   group: z.string().min(1).describe('Category for shopping list aggregation (e.g., vegetables, meat, dairy)'),
-}).strict().transform(({ quantity, unit, ...rest }) => ({
-  ...rest,
-  quantity: { amount: quantity, unit } as Quantity,
-}));
+};
+
+const alternativeIngredientSchema = z.object(ingredientBaseFields).strict();
+
+const ingredientSchema = z.object({
+  ...ingredientBaseFields,
+  alternatives: z.array(alternativeIngredientSchema).optional()
+    .describe('Substitute ingredients for this slot (each with its own id, name, quantity, group)'),
+}).strict();
 
 // ---------------------------------------------------------------------------
 // Other schemas
 // ---------------------------------------------------------------------------
 
 const capacitySchema = z.object({
-  amount: z.number().positive().describe('Capacity amount'),
+  min: z.number().positive().describe('Capacity value'),
   unit: z.string().min(1).describe('Capacity unit (e.g., L, cm)'),
 }).strict();
 
@@ -178,6 +191,21 @@ export function createRecipeSchema(config: RecipeSchemaConfig) {
       checkUnique(operations, 'operation', 'operations');
       checkUnique(equipment, 'equipment', 'equipment');
       checkUnique(subProducts, 'subProduct', 'subProducts');
+
+      // 1b. Alternative ingredient IDs must not collide with any ingredient ID
+      const allIngredientIds = new Set<string>(ingredients.map(ing => ing.id));
+      ingredients.forEach((ing, i) => {
+        ing.alternatives?.forEach((alt, j) => {
+          if (allIngredientIds.has(alt.id)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: `Alternative ingredient ID "${alt.id}" collides with an existing ingredient ID`,
+              path: ['ingredients', i, 'alternatives', j, 'id'],
+            });
+          }
+          allIngredientIds.add(alt.id);
+        });
+      });
 
       // 2. subProduct.finalOp must resolve to an operation ID
       subProducts.forEach((sp, i) => {

@@ -145,25 +145,94 @@
             "description": "Human-readable ingredient name"
           },
           "quantity": {
-            "type": "number",
-            "description": "Amount in the specified unit"
-          },
-          "unit": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Unit of measurement (metric preferred: g, ml, whole, cloves, etc.)"
+            "type": "object",
+            "properties": {
+              "min": {
+                "type": "number",
+                "description": "Lower bound (or exact) amount"
+              },
+              "max": {
+                "description": "Upper bound of quantity range",
+                "type": "number"
+              },
+              "unit": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Unit of measurement (metric preferred: g, ml, whole, cloves, etc.)"
+              }
+            },
+            "required": [
+              "min",
+              "unit"
+            ],
+            "additionalProperties": false,
+            "description": "Amount with unit, optionally a range"
           },
           "group": {
             "type": "string",
             "minLength": 1,
             "description": "Category for shopping list aggregation (e.g., vegetables, meat, dairy)"
+          },
+          "alternatives": {
+            "description": "Substitute ingredients for this slot (each with its own id, name, quantity, group)",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "description": "Unique identifier for this ingredient, referenced by operations",
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Human-readable ingredient name"
+                },
+                "quantity": {
+                  "type": "object",
+                  "properties": {
+                    "min": {
+                      "type": "number",
+                      "description": "Lower bound (or exact) amount"
+                    },
+                    "max": {
+                      "description": "Upper bound of quantity range",
+                      "type": "number"
+                    },
+                    "unit": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Unit of measurement (metric preferred: g, ml, whole, cloves, etc.)"
+                    }
+                  },
+                  "required": [
+                    "min",
+                    "unit"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Amount with unit, optionally a range"
+                },
+                "group": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Category for shopping list aggregation (e.g., vegetables, meat, dairy)"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "quantity",
+                "group"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [
           "id",
           "name",
           "quantity",
-          "unit",
           "group"
         ],
         "additionalProperties": false
@@ -195,10 +264,10 @@
             "description": "Physical capacity (e.g., 5L pot, 30cm pan)",
             "type": "object",
             "properties": {
-              "amount": {
+              "min": {
                 "type": "number",
                 "exclusiveMinimum": 0,
-                "description": "Capacity amount"
+                "description": "Capacity value"
               },
               "unit": {
                 "type": "string",
@@ -207,7 +276,7 @@
               }
             },
             "required": [
-              "amount",
+              "min",
               "unit"
             ],
             "additionalProperties": false

@@ -21,7 +21,7 @@ const mockRecipe: Recipe = {
     difficulty: 'medium',
   },
   ingredients: [
-    { id: 'ing-1' as any, name: 'Salt', quantity: { amount: 1, unit: 'tsp' }, group: 'spices' },
+    { id: 'ing-1' as any, name: 'Salt', quantity: { min: 1, unit: 'tsp' }, group: 'spices' },
   ],
   equipment: [
     { id: 'eq-1' as any, name: 'Pan', count: 1 },

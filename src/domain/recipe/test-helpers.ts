@@ -6,6 +6,7 @@ import type {
   Recipe,
   RecipeMeta,
   Ingredient,
+  IngredientBase,
   Equipment,
   Operation,
   SubProduct,
@@ -30,7 +31,8 @@ export const slug = (s: string) => s as RecipeSlug;
 // ---------------------------------------------------------------------------
 // Value object helpers
 // ---------------------------------------------------------------------------
-export const qty = (amount: number, unit: string): Quantity => ({ amount, unit });
+export const qty = (min: number, unit: string, max?: number): Quantity =>
+  max !== undefined ? { min, max, unit } : { min, unit };
 
 /** Create a TimeRange from seconds. Pass one number for exact, two for range. */
 export const secs = (min: number, max?: number): TimeRange =>
@@ -39,8 +41,18 @@ export const secs = (min: number, max?: number): TimeRange =>
 // ---------------------------------------------------------------------------
 // Factory for flat-format ingredient (matches JSON input shape)
 // ---------------------------------------------------------------------------
-export function ing(id: string, name: string, quantity: number, unit: string, group: string): Ingredient {
-  return { id: ingId(id), name, quantity: qty(quantity, unit), group };
+export function ing(
+  id: string, name: string, min: number, unit: string, group: string,
+  opts?: { max?: number; alternatives?: { id: string; name: string; min: number; unit: string; group: string; max?: number }[] },
+): Ingredient {
+  const q = opts?.max !== undefined ? qty(min, unit, opts.max) : qty(min, unit);
+  const alts: IngredientBase[] | undefined = opts?.alternatives?.map(a => ({
+    id: ingId(a.id),
+    name: a.name,
+    quantity: a.max !== undefined ? qty(a.min, a.unit, a.max) : qty(a.min, a.unit),
+    group: a.group,
+  }));
+  return { id: ingId(id), name, quantity: q, group, ...(alts ? { alternatives: alts } : {}) };
 }
 
 // ---------------------------------------------------------------------------

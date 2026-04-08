@@ -22,13 +22,13 @@ const validRecipeInput = {
     difficulty: 'medium',
   },
   ingredients: [
-    { id: 'spaghetti', name: 'Spaghetti', quantity: 400, unit: 'g', group: 'pasta' },
-    { id: 'ground-beef', name: 'Ground Beef', quantity: 500, unit: 'g', group: 'meat' },
-    { id: 'onion', name: 'Onion', quantity: 1, unit: 'pcs', group: 'vegetables' },
-    { id: 'garlic', name: 'Garlic', quantity: 3, unit: 'cloves', group: 'vegetables' },
-    { id: 'tomato-sauce', name: 'Tomato Sauce', quantity: 400, unit: 'ml', group: 'sauce' },
-    { id: 'olive-oil', name: 'Olive Oil', quantity: 2, unit: 'tbsp', group: 'pantry' },
-    { id: 'salt', name: 'Salt', quantity: 1, unit: 'tsp', group: 'pantry' },
+    { id: 'spaghetti', name: 'Spaghetti', quantity: { min: 400, unit: 'g' }, group: 'pasta' },
+    { id: 'ground-beef', name: 'Ground Beef', quantity: { min: 500, unit: 'g' }, group: 'meat' },
+    { id: 'onion', name: 'Onion', quantity: { min: 1, unit: 'pcs' }, group: 'vegetables' },
+    { id: 'garlic', name: 'Garlic', quantity: { min: 3, unit: 'cloves' }, group: 'vegetables' },
+    { id: 'tomato-sauce', name: 'Tomato Sauce', quantity: { min: 400, unit: 'ml' }, group: 'sauce' },
+    { id: 'olive-oil', name: 'Olive Oil', quantity: { min: 2, unit: 'tbsp' }, group: 'pantry' },
+    { id: 'salt', name: 'Salt', quantity: { min: 1, unit: 'tsp' }, group: 'pantry' },
   ],
   equipment: [
     { id: 'large-pot', name: 'Large Pot', count: 1 },
@@ -121,14 +121,12 @@ describe('recipeSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('transforms ingredient quantity+unit into Quantity value object', () => {
+  it('parses nested quantity object as Quantity value object', () => {
     const result = recipeSchema.safeParse(validRecipeInput);
     expect(result.success).toBe(true);
     if (result.success) {
       const ing = result.data.ingredients[0]!;
-      expect(ing.quantity).toEqual({ amount: 400, unit: 'g' });
-      // 'unit' should NOT exist as a top-level field after transform
-      expect('unit' in ing).toBe(false);
+      expect(ing.quantity).toEqual({ min: 400, unit: 'g' });
     }
   });
 
@@ -166,6 +164,114 @@ describe('recipeSchema', () => {
     const bad = { ...validRecipeInput, ingredients: [] };
     const result = recipeSchema.safeParse(bad);
     expect(result.success).toBe(false);
+  });
+
+  it('accepts ingredient with maxQuantity and transforms to Quantity with max', () => {
+    const input = {
+      ...validRecipeInput,
+      ingredients: [
+        { ...validRecipeInput.ingredients[0]!, quantity: { min: 100, max: 150, unit: 'g' } },
+        ...validRecipeInput.ingredients.slice(1),
+      ],
+    };
+    const result = recipeSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.ingredients[0]!.quantity).toEqual({ min: 100, max: 150, unit: 'g' });
+    }
+  });
+
+  it('rejects ingredient where maxQuantity < quantity', () => {
+    const input = {
+      ...validRecipeInput,
+      ingredients: [
+        { ...validRecipeInput.ingredients[0]!, quantity: { min: 150, max: 100, unit: 'g' } },
+        ...validRecipeInput.ingredients.slice(1),
+      ],
+    };
+    const result = recipeSchema.safeParse(input);
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts ingredient without maxQuantity (exact quantity)', () => {
+    const result = recipeSchema.safeParse(validRecipeInput);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.ingredients[0]!.quantity).toEqual({ min: 400, unit: 'g' });
+      expect(result.data.ingredients[0]!.quantity.max).toBeUndefined();
+    }
+  });
+
+  it('accepts ingredient with alternatives', () => {
+    const input = {
+      ...validRecipeInput,
+      ingredients: [
+        ...validRecipeInput.ingredients,
+        {
+          id: 'fat', name: 'Cream', quantity: { min: 200, unit: 'ml' }, group: 'dairy',
+          alternatives: [
+            { id: 'fat-alt', name: 'Water', quantity: { min: 200, unit: 'ml' }, group: 'pantry' },
+          ],
+        },
+      ],
+    };
+    const result = recipeSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const fat = result.data.ingredients.find(i => i.id === 'fat')!;
+      expect(fat.alternatives).toHaveLength(1);
+      expect(fat.alternatives![0]!.name).toBe('Water');
+      expect(fat.alternatives![0]!.quantity).toEqual({ min: 200, unit: 'ml' });
+      expect(fat.alternatives![0]!.id).toBe('fat-alt');
+      expect(fat.alternatives![0]!.group).toBe('pantry');
+    }
+  });
+
+  it('accepts alternative with maxQuantity range', () => {
+    const input = {
+      ...validRecipeInput,
+      ingredients: [
+        ...validRecipeInput.ingredients,
+        {
+          id: 'fat', name: 'Cream', quantity: { min: 100, max: 150, unit: 'ml' }, group: 'dairy',
+          alternatives: [
+            { id: 'fat-alt', name: 'Sour Cream', quantity: { min: 80, max: 120, unit: 'g' }, group: 'dairy' },
+          ],
+        },
+      ],
+    };
+    const result = recipeSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const fat = result.data.ingredients.find(i => i.id === 'fat')!;
+      expect(fat.quantity).toEqual({ min: 100, max: 150, unit: 'ml' });
+      expect(fat.alternatives![0]!.quantity).toEqual({ min: 80, max: 120, unit: 'g' });
+    }
+  });
+
+  it('rejects alternative where maxQuantity < quantity', () => {
+    const input = {
+      ...validRecipeInput,
+      ingredients: [
+        ...validRecipeInput.ingredients,
+        {
+          id: 'fat', name: 'Cream', quantity: { min: 200, unit: 'ml' }, group: 'dairy',
+          alternatives: [
+            { id: 'fat-alt', name: 'Water', quantity: { min: 200, max: 100, unit: 'ml' }, group: 'pantry' },
+          ],
+        },
+      ],
+    };
+    const result = recipeSchema.safeParse(input);
+    expect(result.success).toBe(false);
+  });
+
+  it('omits alternatives key when not provided', () => {
+    const result = recipeSchema.safeParse(validRecipeInput);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.ingredients[0]!.alternatives).toBeUndefined();
+    }
   });
 
   it('rejects empty string for title', () => {
@@ -333,7 +439,7 @@ describe('parseRecipe', () => {
   it('ingredient has Quantity value object after parse', () => {
     const recipe = parseRecipe(validRecipeInput);
     const spaghetti = recipe.ingredients.find(i => i.id === 'spaghetti')!;
-    expect(spaghetti.quantity).toEqual({ amount: 400, unit: 'g' });
+    expect(spaghetti.quantity).toEqual({ min: 400, unit: 'g' });
   });
 });
 
@@ -407,16 +513,16 @@ describe('z.toJSONSchema generation', () => {
     expect(metaProps.difficulty.description).toBe('Recipe difficulty level');
   });
 
-  it('generates input shape (flat quantity+unit, not Quantity VO)', () => {
+  it('generates input shape with nested quantity object', () => {
     const jsonSchema = z.toJSONSchema(recipeSchema, {
       io: 'input',
       target: 'draft-2020-12',
     }) as any;
     const ingredientProps = jsonSchema.properties.ingredients.items.properties;
     expect(ingredientProps).toHaveProperty('quantity');
-    expect(ingredientProps).toHaveProperty('unit');
-    expect(ingredientProps.quantity.type).toBe('number');
-    expect(ingredientProps.unit.type).toBe('string');
+    expect(ingredientProps.quantity.type).toBe('object');
+    expect(ingredientProps.quantity.properties).toHaveProperty('min');
+    expect(ingredientProps.quantity.properties).toHaveProperty('unit');
   });
 });
 
@@ -479,6 +585,27 @@ describe('cross-entity validation (superRefine)', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues.some(i => i.message.includes('unknown equipment'))).toBe(true);
+    }
+  });
+
+  it('rejects alternative ingredient ID that collides with primary ingredient ID', () => {
+    const bad = {
+      ...validRecipeInput,
+      ingredients: [
+        {
+          ...validRecipeInput.ingredients[0]!,
+          alternatives: [
+            { id: validRecipeInput.ingredients[1]!.id, name: 'Alt', quantity: { min: 100, unit: 'g' }, group: 'meat' },
+          ],
+        },
+        validRecipeInput.ingredients[1]!,
+        ...validRecipeInput.ingredients.slice(2),
+      ],
+    };
+    const result = recipeSchema.safeParse(bad);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some(i => i.message.includes('collides'))).toBe(true);
     }
   });
 

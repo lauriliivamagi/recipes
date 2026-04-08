@@ -5,8 +5,14 @@ export function scaleQuantity(
   qty: Quantity,
   scaleFactor: number,
 ): Quantity {
-  const scaled = qty.amount * scaleFactor;
-  return { amount: roundQuantity(scaled, qty.unit), unit: qty.unit };
+  const scaled = qty.min * scaleFactor;
+  return {
+    min: roundQuantity(scaled, qty.unit),
+    ...(qty.max !== undefined
+      ? { max: roundQuantity(qty.max * scaleFactor, qty.unit) }
+      : {}),
+    unit: qty.unit,
+  };
 }
 
 export function scaleTime(

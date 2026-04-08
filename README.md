@@ -142,7 +142,7 @@ Recipes are JSON files validated against [`config/recipe-schema.json`](config/re
     "difficulty": "easy"
   },
   "ingredients": [
-    { "id": "onion", "name": "Onion", "quantity": 1, "unit": "whole", "group": "vegetables" }
+    { "id": "onion", "name": "Onion", "quantity": { "min": 1, "unit": "whole" }, "group": "vegetables" }
   ],
   "equipment": [
     { "id": "large-pan", "name": "Large heavy-bottomed pan", "count": 1 }

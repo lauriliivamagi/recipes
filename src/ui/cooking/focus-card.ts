@@ -4,6 +4,7 @@ import { ContextConsumer } from '@lit/context';
 import { designTokens, resetStyles, baseStyles } from '../shared/styles.js';
 import { scaleFactorContext } from '../contexts/recipe-contexts.js';
 import { scaleQuantity } from '../../domain/scaling/scale.js';
+import { formatQuantity } from '../../domain/scaling/format.js';
 import type { Operation, Ingredient } from '../../domain/recipe/types.js';
 import { formatMinutes } from '../../domain/cooking/timer.js';
 
@@ -180,9 +181,15 @@ export class FocusCard extends LitElement {
           <div class="focus-ingredients">
             ${this.ingredients.map((ing, i) => {
               const scaled = scaleQuantity(ing.quantity, this.scaleFactor);
+              const altText = ing.alternatives?.length
+                ? ` (or ${ing.alternatives.map(a => {
+                    const aScaled = scaleQuantity(a.quantity, this.scaleFactor);
+                    return `${formatQuantity(aScaled)} ${a.name}`;
+                  }).join(' or ')})`
+                : '';
               return html`
                 <div class="ingredient-line" style="--ing-index: ${i}">
-                  <span class="qty">${scaled.amount} ${scaled.unit}</span> ${ing.name}
+                  <span class="qty">${formatQuantity(scaled)}</span> ${ing.name}${altText}
                 </div>
               `;
             })}

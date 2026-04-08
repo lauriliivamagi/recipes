@@ -16,9 +16,10 @@ export type RecipeSlug = Brand<string, 'RecipeSlug'>;
 // Value Objects
 // ---------------------------------------------------------------------------
 
-/** Amount + unit paired together. Prevents passing wrong unit for a quantity. */
+/** Amount + unit paired together. min is lower bound (or exact when max omitted). */
 export interface Quantity {
-  readonly amount: number;
+  readonly min: number;
+  readonly max?: number;
   readonly unit: string;
 }
 
@@ -46,11 +47,15 @@ export interface RecipeMeta {
   notes?: string;
 }
 
-export interface Ingredient {
+export interface IngredientBase {
   id: IngredientId;
   name: string;
   quantity: Quantity;
   group: string;
+}
+
+export interface Ingredient extends IngredientBase {
+  alternatives?: IngredientBase[];
 }
 
 export interface Equipment {

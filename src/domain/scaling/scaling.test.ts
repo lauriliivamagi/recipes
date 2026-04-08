@@ -3,9 +3,11 @@ import { normalizeUnit, convertUnit } from './unit-convert.js';
 import { convertTemperature } from './temperature.js';
 import { roundQuantity } from './round.js';
 import { scaleQuantity, scaleTime } from './scale.js';
+import { formatQuantity } from './format.js';
 import type { Quantity, TimeRange } from '../recipe/types.js';
 
-const q = (amount: number, unit: string): Quantity => ({ amount, unit });
+const q = (min: number, unit: string, max?: number): Quantity =>
+  max !== undefined ? { min, max, unit } : { min, unit };
 const tr = (min: number, max?: number): TimeRange => max !== undefined ? { min, max } : { min };
 
 describe('normalizeUnit', () => {
@@ -156,6 +158,24 @@ describe('scaleQuantity', () => {
     const result = scaleQuantity(q(100, 'ml'), 3);
     expect(result.unit).toBe('ml');
   });
+
+  it('scales both min and max for range quantities', () => {
+    const range = q(100, 'g', 150);
+    expect(scaleQuantity(range, 2)).toEqual(q(200, 'g', 300));
+  });
+
+  it('rounds both bounds when scaling range quantities', () => {
+    const range = q(100, 'g', 150);
+    const scaled = scaleQuantity(range, 1.5);
+    expect(scaled.min).toBe(150);
+    expect(scaled.max).toBe(225);
+  });
+
+  it('does not include max when original has no max', () => {
+    const exact = q(100, 'g');
+    const scaled = scaleQuantity(exact, 2);
+    expect(scaled.max).toBeUndefined();
+  });
 });
 
 describe('scaleTime', () => {
@@ -180,5 +200,19 @@ describe('scaleTime', () => {
     const result = scaleTime(tr(600, 900), true, 0.5);
     expect(result.min).toBe(300);
     expect(result.max).toBe(450);
+  });
+});
+
+describe('formatQuantity', () => {
+  it('formats exact quantity', () => {
+    expect(formatQuantity(q(100, 'g'))).toBe('100 g');
+  });
+
+  it('formats range with en-dash', () => {
+    expect(formatQuantity(q(100, 'g', 150))).toBe('100\u2013150 g');
+  });
+
+  it('formats fractional range', () => {
+    expect(formatQuantity(q(1.5, 'cup', 2))).toBe('1.5\u20132 cup');
   });
 });

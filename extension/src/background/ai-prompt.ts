@@ -27,7 +27,7 @@ ${JSON.stringify(tagsJson, null, 2)}
 ## Critical Rules
 
 1. **Preserve the source language.** All text fields (title, action descriptions, details, notes, ingredient names) stay in the recipe's original language. Do NOT translate.
-2. **Extract quantities in their original units.** Do not convert units — output exactly what the recipe says. If the recipe says "2 cups flour", output { "quantity": 2, "unit": "cup" }.
+2. **Extract quantities in their original units.** Do not convert units — output exactly what the recipe says. If the recipe says "2 cups flour", output \`"quantity": {"min": 2, "unit": "cup"}\`. For ranges like "100-150 g", output \`"quantity": {"min": 100, "max": 150, "unit": "g"}\`. For ingredients with alternatives (e.g., "cream or water"), use the \`alternatives\` array.
 3. **Build a proper DAG.** Each operation has \`ingredients\` (array of ingredient IDs consumed) and \`depends\` (array of operation IDs that must complete first). There must be no cycles. Leaf operations have \`depends: []\`.
 4. **Times are in seconds with optional ranges.** \`time\` and \`activeTime\` are \`{min: number, max?: number}\` in seconds. Simmering, baking, resting, marinating are passive (\`activeTime: {min: 0}\`). Use ranges for variable-time operations.
 5. **Equipment is a required array.** Each operation has \`equipment: [{use: "equipment-id", release: boolean}, ...]\`. Empty array \`[]\` if no equipment. Set \`release: false\` when the next operation continues in the same vessel.
@@ -66,7 +66,9 @@ Schema.org does NOT give you: DAG edges, active vs passive time, equipment occup
 - Create unique kebab-case IDs (e.g., \`olive-oil\`, \`garlic-cloves\`)
 - Separate forms of the same ingredient get separate entries (\`butter-softened\`, \`butter-melted\`)
 - Set \`group\` to a logical shopping category
-- **CRITICAL**: \`quantity\` and \`unit\` are FLAT sibling fields, NOT nested. Correct: \`{"id": "flour", "name": "flour", "quantity": 250, "unit": "g", "group": "dry"}\`. WRONG: \`{"quantity": {"amount": 250, "unit": "g"}}\`
+- \`quantity\` is a nested object: \`{"min": number, "max"?: number, "unit": string}\`. Example: \`{"id": "flour", "name": "flour", "quantity": {"min": 250, "unit": "g"}, "group": "dry"}\`
+- For quantity ranges: add \`max\` inside the quantity object. Example: \`{"id": "cheese", "name": "cheese", "quantity": {"min": 100, "max": 150, "unit": "g"}, "group": "dairy"}\`
+- For ingredient alternatives: add optional \`alternatives\` array with full ingredient objects. Example: \`{"id": "fat", "name": "cream", "quantity": {"min": 200, "unit": "ml"}, "group": "dairy", "alternatives": [{"id": "fat-alt", "name": "water", "quantity": {"min": 200, "unit": "ml"}, "group": "pantry"}]}\`
 
 ### Operations
 - Break compound instructions into atomic operations
