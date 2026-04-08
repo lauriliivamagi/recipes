@@ -1,0 +1,256 @@
+{
+  "meta": {
+    "title": "Kilupirukad fetajuustuga",
+    "slug": "kilupirukad-fetajuustuga",
+    "language": "en",
+    "originalText": "500 g pärmi-lehttainast, 4 keedetud muna, 130 g vürtsikilufileesid, 12 kirsstomatit, 100 g fetajuustu, 1 muna (määrimiseks), hakitud murulauku. Sulata tainas, rulli 5 mm paksuseks ja lõika 8x8 cm ruutudeks. Suru muffinipanni aukudesse. Haki keedumunad, puista tainale, aseta peale kilufilee. Lõika kirsstomatid neljaks ja jaota pirukatele. Puista peale fetajuust. Pintselda pirukaid pealt munaga. Küpseta 225-kraadises ahjus 12-15 minutit. Puista peale hakitud murulauku, serveeri soojalt.",
+    "tags": [
+      "mediterranean",
+      "dinner",
+      "comfort-food",
+      "weeknight"
+    ],
+    "servings": 18,
+    "totalTime": {
+      "relaxed": {
+        "min": 2100
+      },
+      "optimized": {
+        "min": 2100
+      }
+    },
+    "difficulty": "easy",
+    "energyTier": "moderate"
+  },
+  "ingredients": [
+    {
+      "id": "puff-pastry",
+      "name": "pärmi-lehttainas",
+      "quantity": {
+        "min": 500,
+        "unit": "g"
+      },
+      "group": "bakery"
+    },
+    {
+      "id": "boiled-egg",
+      "name": "keedetud muna",
+      "quantity": {
+        "min": 4,
+        "unit": "whole"
+      },
+      "group": "dairy"
+    },
+    {
+      "id": "spiced-sprat",
+      "name": "vürtsikilufileed",
+      "quantity": {
+        "min": 130,
+        "unit": "g"
+      },
+      "group": "fish"
+    },
+    {
+      "id": "cherry-tomato",
+      "name": "kirsstomat",
+      "quantity": {
+        "min": 12,
+        "unit": "whole"
+      },
+      "group": "vegetables"
+    },
+    {
+      "id": "feta-cheese",
+      "name": "fetajuust",
+      "quantity": {
+        "min": 100,
+        "unit": "g"
+      },
+      "group": "dairy"
+    },
+    {
+      "id": "egg-wash",
+      "name": "muna",
+      "quantity": {
+        "min": 1,
+        "unit": "whole"
+      },
+      "group": "dairy"
+    },
+    {
+      "id": "chives",
+      "name": "murulauk",
+      "quantity": {
+        "min": 1,
+        "unit": "bunch"
+      },
+      "group": "vegetables"
+    }
+  ],
+  "equipment": [
+    {
+      "id": "muffin-pan",
+      "name": "muffinipann",
+      "count": 1
+    },
+    {
+      "id": "knife",
+      "name": "nuga",
+      "count": 1
+    },
+    {
+      "id": "rolling-pin",
+      "name": "taignarull",
+      "count": 1
+    }
+  ],
+  "operations": [
+    {
+      "id": "prep-dough",
+      "type": "prep",
+      "action": "roll and cut dough",
+      "ingredients": [
+        "puff-pastry"
+      ],
+      "depends": [],
+      "equipment": [
+        {
+          "use": "rolling-pin",
+          "release": true
+        },
+        {
+          "use": "knife",
+          "release": true
+        }
+      ],
+      "time": {
+        "min": 600
+      },
+      "activeTime": {
+        "min": 600
+      },
+      "scalable": true
+    },
+    {
+      "id": "place-dough",
+      "type": "assemble",
+      "action": "press dough into muffin pan",
+      "ingredients": [],
+      "depends": [
+        "prep-dough"
+      ],
+      "equipment": [
+        {
+          "use": "muffin-pan",
+          "release": false
+        }
+      ],
+      "time": {
+        "min": 180
+      },
+      "activeTime": {
+        "min": 180
+      },
+      "scalable": true
+    },
+    {
+      "id": "prep-fillings",
+      "type": "prep",
+      "action": "chop eggs and tomatoes",
+      "ingredients": [
+        "boiled-egg",
+        "cherry-tomato"
+      ],
+      "depends": [],
+      "equipment": [
+        {
+          "use": "knife",
+          "release": true
+        }
+      ],
+      "time": {
+        "min": 300
+      },
+      "activeTime": {
+        "min": 300
+      },
+      "scalable": true
+    },
+    {
+      "id": "assemble-pies",
+      "type": "assemble",
+      "action": "fill pies and egg wash",
+      "ingredients": [
+        "boiled-egg",
+        "spiced-sprat",
+        "cherry-tomato",
+        "feta-cheese",
+        "egg-wash"
+      ],
+      "depends": [
+        "place-dough",
+        "prep-fillings"
+      ],
+      "equipment": [
+        {
+          "use": "muffin-pan",
+          "release": false
+        }
+      ],
+      "time": {
+        "min": 300
+      },
+      "activeTime": {
+        "min": 300
+      },
+      "scalable": true
+    },
+    {
+      "id": "bake-pies",
+      "type": "cook",
+      "action": "bake",
+      "ingredients": [],
+      "depends": [
+        "assemble-pies"
+      ],
+      "equipment": [
+        {
+          "use": "muffin-pan",
+          "release": true
+        }
+      ],
+      "time": {
+        "min": 720,
+        "max": 900
+      },
+      "activeTime": {
+        "min": 0
+      },
+      "scalable": false,
+      "temperature": {
+        "min": 225,
+        "unit": "C"
+      }
+    },
+    {
+      "id": "garnish-serve",
+      "type": "assemble",
+      "action": "garnish with chives and serve",
+      "ingredients": [
+        "chives"
+      ],
+      "depends": [
+        "bake-pies"
+      ],
+      "equipment": [],
+      "time": {
+        "min": 60
+      },
+      "activeTime": {
+        "min": 60
+      },
+      "scalable": true
+    }
+  ],
+  "subProducts": []
+}

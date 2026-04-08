@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
-import { recipesPlugin } from './src/build/vite-plugin-recipes.js';
+import { recipesPlugin } from './packages/build/src/vite-plugin-recipes.js';
 
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -8,9 +8,9 @@ export default defineConfig({
   base: './',
   resolve: {
     alias: {
-      '@domain': resolve(__dirname, 'src/domain'),
-      '@ui': resolve(__dirname, 'src/ui'),
-      '@build': resolve(__dirname, 'src/build'),
+      '@recipe/domain': resolve(__dirname, 'packages/domain/src'),
+      '@recipe/ui': resolve(__dirname, 'packages/ui/src'),
+      '@recipe/build': resolve(__dirname, 'packages/build/src'),
     },
   },
   build: {

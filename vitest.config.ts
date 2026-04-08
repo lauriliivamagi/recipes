@@ -4,18 +4,18 @@ import { resolve } from 'path';
 export default defineConfig({
   resolve: {
     alias: {
-      '@domain': resolve(__dirname, 'src/domain'),
-      '@ui': resolve(__dirname, 'src/ui'),
-      '@build': resolve(__dirname, 'src/build'),
+      '@recipe/domain': resolve(__dirname, 'packages/domain/src'),
+      '@recipe/ui': resolve(__dirname, 'packages/ui/src'),
+      '@recipe/build': resolve(__dirname, 'packages/build/src'),
     },
   },
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['packages/*/src/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
-      include: ['src/domain/**/*.ts'],
-      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts', 'src/**/types.ts'],
+      include: ['packages/domain/src/**/*.ts'],
+      exclude: ['packages/*/src/**/*.test.ts', 'packages/*/src/**/*.d.ts', 'packages/*/src/**/types.ts'],
       thresholds: {
         branches: 70,
         functions: 90,

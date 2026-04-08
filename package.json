@@ -1,43 +1,33 @@
 {
   "name": "recipes",
-  "version": "2.3.0",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
-    "typecheck": "tsc --noEmit",
-    "eval": "infisical run -- npx promptfoo eval --config evals/promptfoo.yaml",
-    "eval:view": "npx promptfoo view",
-    "knip": "knip"
-  },
-  "dependencies": {
-    "@lit/context": "^1.1.6",
-    "defuddle": "^0.15.0",
-    "linkedom": "^0.18.12",
-    "lit": "^3.3.2",
-    "xstate": "^5.30.0",
-    "zod": "^4.3.6"
+    "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter @recipe/ui test:e2e",
+    "typecheck": "pnpm -r typecheck",
+    "eval": "pnpm --filter @recipe/extension eval",
+    "knip": "knip",
+    "deps-lint": "syncpack lint",
+    "deps-fix": "syncpack fix-mismatches"
   },
   "devDependencies": {
-    "@playwright/test": "^1.59.1",
     "@types/node": "^25.5.2",
     "@vitest/coverage-v8": "^4.1.2",
     "knip": "^6.3.0",
-    "promptfoo": "^0.121.3",
+    "syncpack": "^14.0.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.7",
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.1.2"
   },
-  "overrides": {
-    "vite-plugin-pwa": {
-      "vite": "$vite"
+  "pnpm": {
+    "overrides": {
+      "vite-plugin-pwa>vite": "$vite"
     }
   }
 }

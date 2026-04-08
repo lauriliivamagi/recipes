@@ -1,0 +1,222 @@
+{
+  "meta": {
+    "title": "Lihtsad hakk-kotletid",
+    "slug": "lihtsad-hakk-kotletid",
+    "language": "en",
+    "source": "https://nami-nami.ee/retsept/2709/lihtsad_hakk_kotletid",
+    "originalText": "### Koostisosad\n- 3 viilu saia või 1 dl riivsaia\n- 2 dl vedelikku (vesi, hapukoor või rõõsk koor)\n- 1 hakitud sibul\n- 400-500 g kodust hakkliha\n- 1 muna\n- 1 tl soola\n- 0,5 tl musta pipart\n- õli praadimiseks\n\n### Valmistamine\n1. Pane saiaviilud või riivsai 5 minutiks vedeliku sisse ligunema.\n2. Haki sibul ja soovi korral prae kergelt.\n3. Lisa hakkliha, muna, sibul ja maitseained, sega ühtlaseks.\n4. Vormi kotletid ja prae mõõdukal kuumusel pruuniks.",
+    "tags": [
+      "dinner",
+      "comfort-food"
+    ],
+    "servings": 5,
+    "totalTime": {
+      "relaxed": {
+        "min": 1800
+      },
+      "optimized": {
+        "min": 1500
+      }
+    },
+    "difficulty": "easy",
+    "energyTier": "moderate"
+  },
+  "ingredients": [
+    {
+      "id": "bread",
+      "name": "bread slices or breadcrumbs",
+      "quantity": {
+        "min": 1,
+        "unit": "dl"
+      },
+      "group": "pantry"
+    },
+    {
+      "id": "liquid",
+      "name": "water, sour cream or heavy cream",
+      "quantity": {
+        "min": 2,
+        "unit": "dl"
+      },
+      "group": "dairy"
+    },
+    {
+      "id": "onion",
+      "name": "onion",
+      "quantity": {
+        "min": 1,
+        "unit": "whole"
+      },
+      "group": "vegetables"
+    },
+    {
+      "id": "minced-meat",
+      "name": "minced meat",
+      "quantity": {
+        "min": 400,
+        "max": 500,
+        "unit": "g"
+      },
+      "group": "meat"
+    },
+    {
+      "id": "egg",
+      "name": "egg",
+      "quantity": {
+        "min": 1,
+        "unit": "whole"
+      },
+      "group": "dairy"
+    },
+    {
+      "id": "salt",
+      "name": "salt",
+      "quantity": {
+        "min": 1,
+        "unit": "tsp"
+      },
+      "group": "pantry"
+    },
+    {
+      "id": "pepper",
+      "name": "black pepper",
+      "quantity": {
+        "min": 0.5,
+        "unit": "tsp"
+      },
+      "group": "pantry"
+    },
+    {
+      "id": "oil",
+      "name": "oil",
+      "quantity": {
+        "min": 1,
+        "unit": "tbsp"
+      },
+      "group": "pantry"
+    }
+  ],
+  "equipment": [
+    {
+      "id": "bowl",
+      "name": "mixing bowl",
+      "count": 1
+    },
+    {
+      "id": "knife",
+      "name": "knife",
+      "count": 1
+    },
+    {
+      "id": "pan",
+      "name": "frying pan",
+      "count": 1
+    }
+  ],
+  "operations": [
+    {
+      "id": "soak-bread",
+      "type": "rest",
+      "action": "soak bread",
+      "ingredients": [
+        "bread",
+        "liquid"
+      ],
+      "depends": [],
+      "equipment": [
+        {
+          "use": "bowl",
+          "release": false
+        }
+      ],
+      "time": {
+        "min": 300
+      },
+      "activeTime": {
+        "min": 30
+      },
+      "scalable": false
+    },
+    {
+      "id": "chop-onion",
+      "type": "prep",
+      "action": "chop onion",
+      "ingredients": [
+        "onion"
+      ],
+      "depends": [],
+      "equipment": [
+        {
+          "use": "knife",
+          "release": true
+        }
+      ],
+      "time": {
+        "min": 120
+      },
+      "activeTime": {
+        "min": 120
+      },
+      "scalable": true
+    },
+    {
+      "id": "mix-meat",
+      "type": "assemble",
+      "action": "mix ingredients",
+      "ingredients": [
+        "minced-meat",
+        "egg",
+        "salt",
+        "pepper"
+      ],
+      "depends": [
+        "soak-bread",
+        "chop-onion"
+      ],
+      "equipment": [
+        {
+          "use": "bowl",
+          "release": true
+        }
+      ],
+      "time": {
+        "min": 300
+      },
+      "activeTime": {
+        "min": 300
+      },
+      "scalable": true
+    },
+    {
+      "id": "fry-patties",
+      "type": "cook",
+      "action": "fry patties",
+      "ingredients": [
+        "oil"
+      ],
+      "depends": [
+        "mix-meat"
+      ],
+      "equipment": [
+        {
+          "use": "pan",
+          "release": true
+        }
+      ],
+      "time": {
+        "min": 600,
+        "max": 900
+      },
+      "activeTime": {
+        "min": 300
+      },
+      "scalable": true,
+      "temperature": {
+        "min": 160,
+        "max": 180,
+        "unit": "C"
+      }
+    }
+  ],
+  "subProducts": []
+}

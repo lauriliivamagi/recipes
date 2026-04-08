@@ -99,19 +99,19 @@ Open `site/index.html` in your browser, or run `npm run dev` for live developmen
 The codebase uses **vertical slice architecture** with domain-driven design. Each domain concern is a self-contained slice with its own types, logic, and tests.
 
 ```
-  Recipe JSON             Vite Build Pipeline            Output
-  ───────────             ──────────────────             ──────
-  recipes/                src/build/                     site/
-  └─ italian/               vite-plugin-recipes.ts       ├─ index.html
-     ├─ spaghetti-          ├─ reads recipe JSON         ├─ italian/
-     │  bolognese.json      ├─ validates DAG             │  ├─ spaghetti-bolognese.html
-     └─ classic-            ├─ computes schedules        │  └─ classic-lasagne.html
-        lasagne.json        └─ injects into HTML         ├─ assets/*.js (bundled Lit)
-                                                         ├─ app.webmanifest
-  src/domain/             src/ui/                        └─ sw.js
-  ├─ recipe/              ├─ catalog/
-  ├─ schedule/            ├─ recipe/
-  ├─ scaling/             ├─ overview/
+  Recipe JSON                    Vite Build Pipeline            Output
+  ───────────                    ──────────────────             ──────
+  packages/build/recipes/        packages/build/src/            site/
+  └─ italian/                      vite-plugin-recipes.ts       ├─ index.html
+     ├─ spaghetti-                 ├─ reads recipe JSON         ├─ italian/
+     │  bolognese.json             ├─ validates DAG             │  ├─ spaghetti-bolognese.html
+     └─ classic-                   ├─ computes schedules        │  └─ classic-lasagne.html
+        lasagne.json               └─ injects into HTML         ├─ assets/*.js (bundled Lit)
+                                                                ├─ app.webmanifest
+  packages/domain/src/           packages/ui/src/               └─ sw.js
+  ├─ recipe/                     ├─ catalog/
+  ├─ schedule/                   ├─ recipe/
+  ├─ scaling/                    ├─ overview/
   ├─ catalog/             ├─ cooking/
   └─ cooking/             └─ state/
 ```
@@ -193,27 +193,13 @@ Recipes are JSON files validated against [`config/recipe-schema.json`](config/re
 
 ### With Claude Code
 
-If you have the [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) with this repo's plugin:
-
-```bash
-/recipe-import https://example.com/my-recipe    # from a URL
-/recipe-import path/to/photo.jpg                 # from a cookbook photo
-/recipe-import                                   # paste text interactively
-```
-
-The plugin parses the text, converts to metric, validates the DAG, and generates HTML. It shows a side-by-side comparison before writing the file.
-
 ### Manually
 
-1. Create `recipes/<cuisine>/<slug>.json` (use [`spaghetti-bolognese.json`](recipes/italian/spaghetti-bolognese.json) as a template)
+1. Create `packages/build/recipes/<cuisine>/<slug>.json` (use [`spaghetti-bolognese.json`](packages/build/recipes/italian/spaghetti-bolognese.json) as a template)
 2. Define ingredients, equipment, and operations
 3. Wire up `inputs` arrays to form the DAG
-4. Run `npm run build:recipe -- spaghetti-bolognese` (replace with your slug)
+4. Run `pnpm build`
 5. Open `site/<cuisine>/<slug>.html` in your browser
-
-### Batch import
-
-Drop recipe files (markdown, PDF, images) into `inbox/` and run `/recipe-inbox`.
 
 ### Suggested tags
 
@@ -230,34 +216,32 @@ Tags are freeform, but the app recognizes these categories from [`config/tags.js
 ## Project structure
 
 ```
-src/
-  domain/                 Pure TypeScript domain logic (no DOM)
-    recipe/               types, Zod schema, parser, ingredient resolution
-    schedule/             DAG validation, toposort, critical path, scheduling
-    scaling/              unit conversion, rounding, serving scaling
-    catalog/              search and tag filtering
-    cooking/              step navigation, timer lifecycle
-  ui/                     Lit v3 web components
-    catalog/              <catalog-page>, <search-bar>, <tag-filters>, <recipe-card>
-    recipe/               <recipe-page>, <recipe-header>, <servings-adjuster>, <view-tabs>
-    overview/             <overview-view>, <mode-toggle>, <equipment-summary>, <phase-card>
-    cooking/              <cooking-view>, <focus-card>, <timer-button>, <nav-buttons>
-    state/                XState v5 machine, wake lock, audio, persistence
-  build/                  Vite plugin and i18n loader
-  entries/                Browser entry points (catalog.ts, recipe.ts)
-recipes/                  JSON recipe sources, organized by cuisine
-config/
-  ├─ recipe-schema.json   JSON Schema (draft 2020-12) for recipe validation
-  ├─ unit-conversions.json  metric/imperial conversion tables
-  ├─ ingredient-densities.json  volume-to-weight (g per cup) for scaling
-  ├─ tags.json            suggested tag taxonomy
-  └─ preferences.json     default servings, language, dietary preferences
-templates/                HTML shells + PWA assets + i18n language packs
-e2e/                      Playwright E2E tests
+packages/
+  domain/                 @recipe/domain — pure TypeScript domain logic (no DOM)
+    src/
+      recipe/             types, Zod schema, parser, ingredient resolution
+      schedule/           DAG validation, toposort, critical path, scheduling
+      scaling/            unit conversion, rounding, serving scaling
+      catalog/            search and tag filtering
+      cooking/            step navigation, timer lifecycle
+  ui/                     @recipe/ui — Lit v3 web components
+    src/
+      catalog/            <catalog-page>, <search-bar>, <tag-filters>, <recipe-card>
+      recipe/             <recipe-page>, <recipe-header>, <servings-adjuster>, <view-tabs>
+      overview/           <overview-view>, <mode-toggle>, <equipment-summary>, <phase-card>
+      cooking/            <cooking-view>, <focus-card>, <timer-button>, <nav-buttons>
+      state/              XState v5 machine, wake lock, audio, persistence
+  build/                  @recipe/build — Vite plugin, i18n, data
+    src/                  vite-plugin-recipes.ts, i18n loader, schema generator
+    recipes/              JSON recipe sources, organized by cuisine
+    state/                household state (pool, themes, staples)
+    templates/            HTML shells + i18n language packs
+  extension/              @recipe/extension — Chrome extension for recipe import
+    evals/                PromptFoo AI evaluation suite for recipe parsing
+config/                   JSON schemas + lookup tables (shared across packages)
 site/                     built output (deployed via CI)
 .github/workflows/
   └─ deploy.yml           GitHub Actions → GitHub Pages (test + deploy)
-.claude-plugin/           Claude Code integration (commands + skills)
 ```
 
 ## Tech stack
@@ -315,7 +299,7 @@ npm run preview      # Serve production build locally
 ### Where to contribute
 
 - **Add recipes** — Create `recipes/<cuisine>/<slug>.json` following the schema. See [spaghetti-bolognese.json](recipes/italian/spaghetti-bolognese.json) as a template.
-- **Add a language** — Copy `templates/i18n/en.json` to `templates/i18n/<code>.json` and translate the strings.
+- **Add a language** — Copy `packages/build/templates/i18n/en.json` to `packages/build/templates/i18n/<code>.json` and translate the strings.
 - **Domain logic** — Pure TypeScript in `src/domain/`. Each slice has co-located `.test.ts` files. Run `npm test` to verify.
 - **UI components** — Lit web components in `src/ui/`. Each component is a self-contained `.ts` file with scoped styles.
 - **E2E tests** — Playwright specs in `e2e/`. Run `npm run build && npm run test:e2e`.
