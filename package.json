@@ -15,6 +15,9 @@
     "deps-lint": "syncpack lint",
     "deps-fix": "syncpack fix-mismatches"
   },
+  "dependencies": {
+    "workbox-window": "^7.3.0"
+  },
   "devDependencies": {
     "@types/node": "^25.5.2",
     "@vitest/coverage-v8": "^4.1.2",
