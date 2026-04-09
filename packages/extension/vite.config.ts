@@ -1,6 +1,6 @@
 import { defineConfig, type UserConfig } from 'vite';
 import { resolve } from 'path';
-import { copyFileSync, mkdirSync, existsSync } from 'fs';
+import { copyFileSync, mkdirSync, existsSync, readdirSync } from 'fs';
 
 /**
  * Chrome extension needs different output formats per entry:
@@ -128,6 +128,15 @@ export default defineConfig({
           const destPath = resolve(dist, dest);
           if (!existsSync(destPath)) {
             copyFileSync(resolve(__dirname, src), destPath);
+          }
+        }
+        // Copy icons directory
+        const iconsDir = resolve(dist, 'icons');
+        if (!existsSync(iconsDir)) {
+          mkdirSync(iconsDir, { recursive: true });
+          const srcIcons = resolve(__dirname, 'icons');
+          for (const file of readdirSync(srcIcons)) {
+            copyFileSync(resolve(srcIcons, file), resolve(iconsDir, file));
           }
         }
       },

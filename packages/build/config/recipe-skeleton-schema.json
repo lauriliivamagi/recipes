@@ -1,0 +1,123 @@
+{
+  "type": "object",
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "slug": { "type": "string" },
+        "language": { "type": "string" },
+        "source": { "type": "string" },
+        "originalText": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "servings": { "type": "number" },
+        "totalTime": {
+          "type": "object",
+          "properties": {
+            "relaxed": {
+              "type": "object",
+              "properties": { "min": { "type": "number" }, "max": { "type": "number" } },
+              "required": ["min"]
+            },
+            "optimized": {
+              "type": "object",
+              "properties": { "min": { "type": "number" }, "max": { "type": "number" } },
+              "required": ["min"]
+            }
+          },
+          "required": ["relaxed", "optimized"]
+        },
+        "difficulty": { "type": "string" },
+        "energyTier": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["title", "slug", "language", "originalText", "tags", "servings", "totalTime", "difficulty"]
+    },
+    "ingredients": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "quantity": {
+            "type": "object",
+            "properties": { "min": { "type": "number" }, "max": { "type": "number" }, "unit": { "type": "string" } },
+            "required": ["min", "unit"]
+          },
+          "group": { "type": "string" }
+        },
+        "required": ["id", "name", "quantity", "group"]
+      }
+    },
+    "equipment": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "count": { "type": "integer" }
+        },
+        "required": ["id", "name", "count"]
+      }
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string" },
+          "action": { "type": "string" },
+          "ingredients": { "type": "array", "items": { "type": "string" } },
+          "depends": { "type": "array", "items": { "type": "string" } },
+          "equipment": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "use": { "type": "string" },
+                "release": { "type": "boolean" }
+              },
+              "required": ["use", "release"]
+            }
+          },
+          "time": {
+            "type": "object",
+            "properties": { "min": { "type": "number" }, "max": { "type": "number" } },
+            "required": ["min"]
+          },
+          "activeTime": {
+            "type": "object",
+            "properties": { "min": { "type": "number" }, "max": { "type": "number" } },
+            "required": ["min"]
+          },
+          "scalable": { "type": "boolean" },
+          "temperature": {
+            "type": "object",
+            "properties": { "min": { "type": "number" }, "max": { "type": "number" }, "unit": { "type": "string" } },
+            "required": ["min", "unit"]
+          },
+          "details": { "type": "string" },
+          "subProduct": { "type": "string" },
+          "output": { "type": "string" }
+        },
+        "required": ["id", "type", "action", "ingredients", "depends", "equipment", "time", "activeTime", "scalable"]
+      }
+    },
+    "subProducts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "finalOp": { "type": "string" }
+        },
+        "required": ["id", "name", "finalOp"]
+      }
+    }
+  },
+  "required": ["meta", "ingredients", "equipment", "operations"]
+}

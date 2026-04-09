@@ -1,5 +1,5 @@
 /** Supported LLM providers */
-export type LLMProvider = 'anthropic' | 'openai' | 'google' | 'ollama';
+export type LLMProvider = 'anthropic' | 'openai' | 'google' | 'ollama' | 'ollama-cloud';
 
 /** Model metadata for the registry */
 export interface ModelInfo {
@@ -14,6 +14,7 @@ export interface AISettings {
   model: string;
   apiKeys: Partial<Record<LLMProvider, string>>;
   ollamaBaseUrl?: string;
+  ollamaCloudBaseUrl?: string;
 }
 
 /** Stored recipe in IndexedDB */
@@ -23,4 +24,6 @@ export interface StoredRecipe {
   sourceUrl: string;
   importedAt: number;
   title: string;
+  /** Raw LLM output (post-sanitization) for debugging/iteration */
+  rawLlmOutput?: string;
 }

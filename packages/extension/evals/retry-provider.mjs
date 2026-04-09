@@ -22,25 +22,8 @@ const root = resolve(__dirname, '..');
 const packagesDir = resolve(__dirname, '../..');
 
 // ---------------------------------------------------------------------------
-// System prompt — loaded once from prompt.mjs
+// System prompt — loaded once from prompt.mjs (async, cached on first call)
 // ---------------------------------------------------------------------------
-let _systemPrompt = null;
-function getSystemPrompt() {
-  if (!_systemPrompt) {
-    const recipeSchema = JSON.parse(readFileSync(resolve(packagesDir, 'build/config/recipe-schema.json'), 'utf-8'));
-    const tags = JSON.parse(readFileSync(resolve(packagesDir, 'domain/config/tags.json'), 'utf-8'));
-    // Read prompt.mjs's system prompt by importing it with a dummy fixture
-    // Simpler: just read it from the ai-prompt.ts source pattern directly
-    // (prompt.mjs already has the full system prompt text)
-    const mod = readFileSync(resolve(__dirname, 'prompt.mjs'), 'utf-8');
-    // Extract by calling the module
-    _systemPrompt = 'placeholder';
-  }
-  return _systemPrompt;
-}
-
-// We need the system prompt synchronously but import() is async.
-// Solution: cache it on first callApi (which is async).
 let _systemPromptCache = null;
 async function loadSystemPrompt() {
   if (!_systemPromptCache) {
@@ -57,13 +40,74 @@ async function loadSystemPrompt() {
 // ---------------------------------------------------------------------------
 const MAX_CONTENT_LENGTH = 15_000;
 
+/** Parse ISO 8601 duration (PT30M, PT1H30M) to seconds. Returns 0 if unparseable. */
+function parseIsoDuration(value) {
+  if (typeof value !== 'string') return 0;
+  const match = value.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i);
+  if (!match) return 0;
+  return parseInt(match[1] ?? '0', 10) * 3600
+    + parseInt(match[2] ?? '0', 10) * 60
+    + parseInt(match[3] ?? '0', 10);
+}
+
+/** Walk schema.org data to find an object with @type "Recipe". */
+function findRecipeSchema(data) {
+  if (!data || typeof data !== 'object') return null;
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      const found = findRecipeSchema(item);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (data['@type'] === 'Recipe') return data;
+  if (Array.isArray(data['@graph'])) return findRecipeSchema(data['@graph']);
+  return null;
+}
+
 function buildUserPrompt(extraction, previousErrors, previousOutput) {
   let prompt = '';
   prompt += `## Source URL\n${extraction.url}\n\n`;
   prompt += `## Language\n${extraction.language}\n\n`;
 
   if (extraction.schemaOrgData) {
-    prompt += `## schema.org/Recipe Data\n\`\`\`json\n${JSON.stringify(extraction.schemaOrgData, null, 2)}\n\`\`\`\n\n`;
+    const recipeData = findRecipeSchema(extraction.schemaOrgData);
+    if (recipeData) {
+      prompt += `## schema.org/Recipe Data\n\`\`\`json\n${JSON.stringify(recipeData, null, 2)}\n\`\`\`\n\n`;
+    }
+  }
+
+  // Extract verified facts from schema.org to anchor the LLM
+  if (extraction.schemaOrgData) {
+    const recipeData = findRecipeSchema(extraction.schemaOrgData);
+    if (recipeData) {
+      const facts = [];
+
+      const recipeYield = recipeData['recipeYield'];
+      if (recipeYield != null) {
+        const parsed = typeof recipeYield === 'number'
+          ? recipeYield
+          : parseInt(String(Array.isArray(recipeYield) ? recipeYield[0] : recipeYield), 10);
+        if (!isNaN(parsed) && parsed > 0) facts.push(`Servings: ${parsed}`);
+      }
+
+      const prepTime = parseIsoDuration(recipeData['prepTime']);
+      const cookTime = parseIsoDuration(recipeData['cookTime']);
+      const totalTime = parseIsoDuration(recipeData['totalTime']);
+      if (prepTime > 0) facts.push(`Prep time: ${prepTime}s`);
+      if (cookTime > 0) facts.push(`Cook time: ${cookTime}s`);
+      if (totalTime > 0) facts.push(`Total time: ${totalTime}s`);
+
+      const ingList = recipeData['recipeIngredient'];
+      if (Array.isArray(ingList) && ingList.length > 0) {
+        facts.push(`Ingredient count: ${ingList.length}`);
+      }
+
+      if (facts.length > 0) {
+        prompt += `## Verified Facts (from structured data — use these as ground truth)\n`;
+        prompt += facts.map((f) => `- ${f}`).join('\n') + '\n\n';
+      }
+    }
   }
 
   const content = extraction.contentMarkdown.length > MAX_CONTENT_LENGTH
@@ -115,12 +159,34 @@ function validateRecipe(jsonString) {
 }
 
 // ---------------------------------------------------------------------------
+// Skeleton schema — loaded once, inlined into provider configs that use file:// refs
+// ---------------------------------------------------------------------------
+const skeletonSchema = JSON.parse(
+  readFileSync(resolve(packagesDir, 'build/config/recipe-skeleton-schema.json'), 'utf-8'),
+);
+
+/** Replace file:// references in provider config with the actual schema object. */
+function resolveSchemaRefs(config) {
+  if (!config || typeof config !== 'object') return config;
+  const resolved = { ...config };
+  // Google: responseSchema
+  if (typeof resolved.responseSchema === 'string' && resolved.responseSchema.includes('recipe-skeleton-schema')) {
+    resolved.responseSchema = skeletonSchema;
+  }
+  // Ollama: passthrough.format
+  if (resolved.passthrough?.format && typeof resolved.passthrough.format === 'string' && resolved.passthrough.format.includes('recipe-skeleton-schema')) {
+    resolved.passthrough = { ...resolved.passthrough, format: skeletonSchema };
+  }
+  return resolved;
+}
+
+// ---------------------------------------------------------------------------
 // Provider class
 // ---------------------------------------------------------------------------
 export default class RetryProvider {
   constructor(options) {
     this.providerId = options.config?.provider || 'anthropic:messages:claude-haiku-4-5-20251001';
-    this.providerConfig = options.config?.providerConfig || {};
+    this.providerConfig = resolveSchemaRefs(options.config?.providerConfig || {});
     this.maxRetries = options.config?.maxRetries || 3;
     this.label = options.config?.label || `${this.providerId} (${this.maxRetries} retries)`;
     this._innerProvider = null;

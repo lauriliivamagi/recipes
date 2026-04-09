@@ -10,10 +10,12 @@
  */
 
 import { setup, assign, fromPromise } from 'xstate';
-import { generateText } from 'ai';
+import { generateObject, jsonSchema, NoObjectGeneratedError } from 'ai';
+import { jsonrepair } from 'jsonrepair';
 import { parseRecipe } from '@recipe/domain/recipe/parse.js';
-import { createModelFromSettings } from './ai-provider.js';
-import { buildSystemPrompt, buildUserPrompt } from './ai-prompt.js';
+import type { Recipe } from '@recipe/domain/recipe/types.js';
+import { createModelFromSettings, getGenerationConfig } from './ai-provider.js';
+import { buildSystemPrompt, buildUserPrompt, findRecipeSchema } from './ai-prompt.js';
 import { getSettings } from './settings.js';
 import { saveRecipe } from './recipe-store.js';
 import type { ExtractResult } from '../shared/messages.js';
@@ -78,6 +80,7 @@ interface ParseInput {
   extraction: ExtractResult['data'];
   lastError: string | null;
   lastRawOutput: string | null;
+  isFinalAttempt: boolean;
 }
 
 interface ParseOutput {
@@ -86,54 +89,117 @@ interface ParseOutput {
 }
 
 /** Custom error that carries the raw LLM output for retry feedback */
-class ParseError extends Error {
+export class ParseError extends Error {
   constructor(message: string, public readonly rawOutput: string) {
     super(message);
   }
 }
 
+/**
+ * Strip markdown code fences and repair common LLM JSON issues
+ * (trailing commas, single quotes, comments, truncated output).
+ */
+export function cleanLlmJson(text: string): Record<string, unknown> {
+  const cleaned = text.replace(/^```(?:json)?\s*\n?/m, '').replace(/\n?```\s*$/m, '');
+  return JSON.parse(jsonrepair(cleaned));
+}
+
+/**
+ * Lightweight structural schema for constrained decoding.
+ * Guarantees correct top-level shape (object with 5 keys of the right types)
+ * without the per-token cost of validating every nested field, regex pattern,
+ * and enum. The full schema stays in the prompt for guidance; our deterministic
+ * post-processing pipeline (sanitizeIds, postProcessRaw, parseRecipe) handles
+ * the rest.
+ */
+/**
+ * Lightweight structural schema for constrained decoding.
+ *
+ * Includes required field names at each level so providers like Google
+ * don't accept empty objects as valid. Omits regex patterns, enums,
+ * and deep nesting to keep per-token constraint cost low.
+ */
+import recipeSkeletonJson from '../../../build/config/recipe-skeleton-schema.json' with { type: 'json' };
+
+/**
+ * Mid-weight structural schema for constrained decoding.
+ * Loaded from packages/build/config/recipe-skeleton-schema.json (shared with evals).
+ */
+const recipeSkeletonSchema = jsonSchema(recipeSkeletonJson as Parameters<typeof jsonSchema>[0]);
+
 const parseAndStoreActor = fromPromise<ParseOutput, ParseInput>(async ({ input }) => {
   const model = createModelFromSettings(input.settings);
-
-  const { text } = await generateText({
-    model,
-    system: buildSystemPrompt(),
-    prompt: buildUserPrompt(input.extraction, input.lastError ?? undefined, input.lastRawOutput ?? undefined),
-    temperature: 0,
-    maxOutputTokens: 20000,
-  });
-
-  const cleaned = text.replace(/^```(?:json)?\s*\n?/m, '').replace(/\n?```\s*$/m, '');
+  const genConfig = getGenerationConfig(input.settings.provider, input.settings.model);
 
   let raw: Record<string, unknown>;
+
   try {
-    raw = JSON.parse(cleaned);
-  } catch {
-    throw new ParseError('LLM returned invalid JSON', cleaned.slice(0, 2000));
+    const result = await generateObject({
+      model,
+      schema: recipeSkeletonSchema,
+      schemaName: 'Recipe',
+      schemaDescription: 'Structured recipe with ingredients, equipment, operations DAG, and sub-products',
+      system: buildSystemPrompt(),
+      prompt: buildUserPrompt(input.extraction, input.lastError ?? undefined, input.lastRawOutput ?? undefined),
+      temperature: genConfig.temperature,
+      topP: genConfig.topP,
+      maxOutputTokens: genConfig.maxOutputTokens,
+      providerOptions: genConfig.providerOptions as Parameters<typeof generateObject>[0]['providerOptions'],
+      // Some models (e.g., Gemma 4 via Ollama) wrap JSON in markdown fences even
+      // with format: json set. Strip them before the SDK tries to parse.
+      experimental_repairText: async ({ text }) => {
+        return text.replace(/^```(?:json)?\s*\n?/m, '').replace(/\n?```\s*$/m, '');
+      },
+    });
+    raw = result.object as Record<string, unknown>;
+  } catch (err) {
+    // Extract raw model output from NoObjectGeneratedError for retry feedback
+    const rawOutput = NoObjectGeneratedError.isInstance(err) && err.text
+      ? err.text.slice(0, 6000)
+      : undefined;
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new ParseError(msg, rawOutput ?? msg.slice(0, 2000));
   }
 
   sanitizeIds(raw);
+  postProcessRaw(raw, input.extraction);
 
   // Capture the sanitized JSON for error feedback before validation
-  const sanitizedJson = JSON.stringify(raw, null, 2).slice(0, 3000);
+  const sanitizedJson = JSON.stringify(raw, null, 2).slice(0, 6000);
 
-  try {
-    const recipe = parseRecipe(raw);
-    const stored: StoredRecipe = {
-      slug: recipe.meta.slug,
-      recipe,
-      sourceUrl: input.extraction.url,
-      importedAt: Date.now(),
-      title: recipe.meta.title,
-    };
-    await saveRecipe(stored);
-    return { slug: recipe.meta.slug, title: recipe.meta.title };
-  } catch (err) {
-    throw new ParseError(
-      err instanceof Error ? err.message : String(err),
-      sanitizedJson,
-    );
+  let recipe: Recipe | null = null;
+  let slug: string;
+  let title: string;
+
+  if (!input.isFinalAttempt) {
+    // Normal path: strict validation
+    try {
+      recipe = parseRecipe(raw);
+    } catch (err) {
+      throw new ParseError(
+        err instanceof Error ? err.message : String(err),
+        sanitizedJson,
+      );
+    }
+    slug = recipe.meta.slug;
+    title = recipe.meta.title;
+  } else {
+    // Forgiving path: accept raw output as-is after all retries exhausted
+    const meta = raw['meta'] as Record<string, unknown> | undefined;
+    slug = typeof meta?.['slug'] === 'string' ? toKebabId(meta['slug']) : `import-${Date.now()}`;
+    title = typeof meta?.['title'] === 'string' ? (meta['title'] as string) : 'Untitled Recipe';
   }
+
+  const stored: StoredRecipe = {
+    slug,
+    recipe: recipe ?? raw,
+    sourceUrl: input.extraction.url,
+    importedAt: Date.now(),
+    title,
+    rawLlmOutput: sanitizedJson,
+  };
+  await saveRecipe(stored);
+  return { slug, title };
 });
 
 const loadSettingsActor = fromPromise<AISettings>(async () => getSettings());
@@ -143,7 +209,7 @@ const loadSettingsActor = fromPromise<AISettings>(async () => getSettings());
 // ---------------------------------------------------------------------------
 
 /** Convert any string to valid kebab-case ID: ^[a-z0-9]+(-[a-z0-9]+)*$ */
-function toKebabId(s: string): string {
+export function toKebabId(s: string): string {
   return s
     .toLowerCase()
     .replace(/[._\s]+/g, '-')     // underscores, dots, spaces → hyphens
@@ -157,7 +223,7 @@ function toKebabId(s: string): string {
  * Builds a rename map so references (depends, ingredients, equipment.use,
  * subProducts.finalOp) stay consistent.
  */
-function sanitizeIds(raw: Record<string, unknown>): void {
+export function sanitizeIds(raw: Record<string, unknown>): void {
   const renames = new Map<string, string>();
 
   function fix(id: string): string {
@@ -167,7 +233,7 @@ function sanitizeIds(raw: Record<string, unknown>): void {
     return clean;
   }
 
-  // Fix ingredient IDs
+  // Fix ingredient IDs (including alternatives)
   const ingredients = raw['ingredients'] as Array<Record<string, unknown>> | undefined;
   if (Array.isArray(ingredients)) {
     for (const ing of ingredients) {
@@ -179,6 +245,13 @@ function sanitizeIds(raw: Record<string, unknown>): void {
         if ('amount' in qObj) {
           ing['quantity'] = qObj['amount'];
           if ('unit' in qObj && !('unit' in ing)) ing['unit'] = qObj['unit'];
+        }
+      }
+      // Fix alternative ingredient IDs
+      const alts = ing['alternatives'] as Array<Record<string, unknown>> | undefined;
+      if (Array.isArray(alts)) {
+        for (const alt of alts) {
+          if (typeof alt['id'] === 'string') alt['id'] = fix(alt['id']);
         }
       }
     }
@@ -230,6 +303,268 @@ function sanitizeIds(raw: Record<string, unknown>): void {
   if (meta && typeof meta['slug'] === 'string') {
     meta['slug'] = toKebabId(meta['slug']);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Post-processing: deterministic fixes applied after sanitizeIds
+// ---------------------------------------------------------------------------
+
+interface ExtractionData {
+  url: string;
+  language: string;
+  schemaOrgData: unknown;
+}
+
+/**
+ * Apply deterministic fixes to the raw LLM output that we can verify
+ * programmatically — reduces validation failures and improves quality
+ * without burning retries.
+ */
+export function postProcessRaw(raw: Record<string, unknown>, extraction: ExtractionData): void {
+  const meta = raw['meta'] as Record<string, unknown> | undefined;
+  const operations = raw['operations'] as Array<Record<string, unknown>> | undefined;
+  const ingredients = raw['ingredients'] as Array<Record<string, unknown>> | undefined;
+  const equipment = raw['equipment'] as Array<Record<string, unknown>> | undefined;
+
+  // 1. Override meta.language from extraction (LLM often guesses wrong)
+  if (meta) {
+    meta['language'] = extraction.language;
+  }
+
+  // 2. Override meta.source from extraction URL
+  if (meta) {
+    meta['source'] = extraction.url;
+  }
+
+  // 3. Inject meta.servings from schema.org recipeYield when available
+  if (meta && extraction.schemaOrgData) {
+    const schemaRecipe = findRecipeSchema(extraction.schemaOrgData) as Record<string, unknown> | null;
+    if (schemaRecipe?.['recipeYield'] != null) {
+      const yieldVal = schemaRecipe['recipeYield'];
+      const parsed = typeof yieldVal === 'number'
+        ? yieldVal
+        : parseInt(String(Array.isArray(yieldVal) ? yieldVal[0] : yieldVal), 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        meta['servings'] = parsed;
+      }
+    }
+  }
+
+  // 4. Clamp activeTime ≤ time on all operations
+  if (Array.isArray(operations)) {
+    for (const op of operations) {
+      const time = op['time'] as { min?: number; max?: number } | undefined;
+      const activeTime = op['activeTime'] as { min?: number; max?: number } | undefined;
+      if (time && activeTime && time.min != null && activeTime.min != null) {
+        if (activeTime.min > time.min) {
+          activeTime.min = time.min;
+        }
+        if (activeTime.max != null && time.max != null && activeTime.max > time.max) {
+          activeTime.max = time.max;
+        }
+      }
+    }
+  }
+
+  // 5. Deduplicate ingredients by ID (keep first occurrence)
+  if (Array.isArray(ingredients)) {
+    const seen = new Set<string>();
+    const deduped: Array<Record<string, unknown>> = [];
+    for (const ing of ingredients) {
+      const id = ing['id'] as string;
+      if (!seen.has(id)) {
+        seen.add(id);
+        deduped.push(ing);
+      }
+    }
+    if (deduped.length < ingredients.length) {
+      raw['ingredients'] = deduped;
+    }
+  }
+
+  // 6. Remove orphan ingredients/equipment not referenced by any operation
+  if (Array.isArray(operations)) {
+    const usedIngredientIds = new Set<string>();
+    const usedEquipmentIds = new Set<string>();
+    for (const op of operations) {
+      const ings = op['ingredients'] as string[] | undefined;
+      if (Array.isArray(ings)) ings.forEach((id) => usedIngredientIds.add(id));
+      const eqs = op['equipment'] as Array<Record<string, unknown>> | undefined;
+      if (Array.isArray(eqs)) eqs.forEach((e) => usedEquipmentIds.add(e['use'] as string));
+    }
+
+    const currentIngs = raw['ingredients'] as Array<Record<string, unknown>> | undefined;
+    if (Array.isArray(currentIngs)) {
+      raw['ingredients'] = currentIngs.filter((ing) => usedIngredientIds.has(ing['id'] as string));
+    }
+
+    if (Array.isArray(equipment)) {
+      raw['equipment'] = equipment.filter((eq) => usedEquipmentIds.has(eq['id'] as string));
+    }
+  }
+
+  // 7. Remove self-references in depends (guaranteed cycle)
+  if (Array.isArray(operations)) {
+    for (const op of operations) {
+      const deps = op['depends'] as string[] | undefined;
+      if (Array.isArray(deps)) {
+        op['depends'] = deps.filter((d) => d !== op['id']);
+      }
+    }
+  }
+
+  // 8. Deduplicate depends arrays
+  if (Array.isArray(operations)) {
+    for (const op of operations) {
+      const deps = op['depends'] as string[] | undefined;
+      if (Array.isArray(deps)) {
+        op['depends'] = [...new Set(deps)];
+      }
+    }
+  }
+
+  // 9. Recalculate meta.totalTime from the operation DAG critical path
+  // TODO: compute optimized separately (prep done during idle windows) vs relaxed (all sequential)
+  if (meta && Array.isArray(operations) && operations.length > 0) {
+    const totalTime = computeCriticalPathTime(operations);
+    if (totalTime > 0) {
+      meta['totalTime'] = {
+        relaxed: { min: totalTime },
+        optimized: { min: totalTime },
+      };
+    }
+  }
+
+  // --- Semantic validation: clamp values to sensible ranges ---
+
+  // 10. Temperature sanity: 0–350°C or 32–660°F
+  if (Array.isArray(operations)) {
+    for (const op of operations) {
+      const temp = op['temperature'] as { min?: number; max?: number; unit?: string } | undefined;
+      if (temp?.min != null) {
+        const isFahrenheit = temp.unit === 'F';
+        const lo = isFahrenheit ? 32 : 0;
+        const hi = isFahrenheit ? 660 : 350;
+        temp.min = Math.max(lo, Math.min(hi, temp.min));
+        if (temp.max != null) {
+          temp.max = Math.max(lo, Math.min(hi, temp.max));
+        }
+      }
+    }
+  }
+
+  // 11. Time sanity: ≥ 1s per operation, cap single op at 48h (172800s)
+  if (Array.isArray(operations)) {
+    for (const op of operations) {
+      const time = op['time'] as { min?: number; max?: number } | undefined;
+      if (time?.min != null) {
+        time.min = Math.max(1, Math.min(172800, time.min));
+        if (time.max != null) {
+          time.max = Math.max(1, Math.min(172800, time.max));
+        }
+      }
+    }
+  }
+
+  // 12. Servings sanity: clamp to 1–200
+  if (meta) {
+    const servings = meta['servings'];
+    if (typeof servings === 'number') {
+      meta['servings'] = Math.max(1, Math.min(200, Math.round(servings)));
+    }
+  }
+
+  // 13. Quantity sanity: ensure quantity.min > 0
+  const currentIngs = raw['ingredients'] as Array<Record<string, unknown>> | undefined;
+  if (Array.isArray(currentIngs)) {
+    for (const ing of currentIngs) {
+      const qty = ing['quantity'] as { min?: number; max?: number } | undefined;
+      if (qty?.min != null && qty.min <= 0) {
+        qty.min = 1;
+      }
+    }
+  }
+
+  // 14. Difficulty validation: must be easy|medium|hard
+  if (meta) {
+    const validDifficulties = new Set(['easy', 'medium', 'hard']);
+    if (!validDifficulties.has(meta['difficulty'] as string)) {
+      meta['difficulty'] = 'medium';
+    }
+  }
+}
+
+/**
+ * Compute the critical path duration (in seconds) from raw operation data.
+ * Uses longest-path through the DAG via topological order.
+ */
+function computeCriticalPathTime(operations: Array<Record<string, unknown>>): number {
+  const timeOf = (op: Record<string, unknown>): number => {
+    const t = op['time'] as Record<string, number> | undefined;
+    return t?.['min'] ?? 0;
+  };
+
+  // Build adjacency + in-degree for Kahn's algorithm
+  const ids = operations.map((op) => op['id'] as string);
+  const idSet = new Set(ids);
+  const inDeg = new Map<string, number>();
+  const adj = new Map<string, string[]>();
+  const opMap = new Map<string, Record<string, unknown>>();
+
+  for (const op of operations) {
+    const id = op['id'] as string;
+    inDeg.set(id, 0);
+    adj.set(id, []);
+    opMap.set(id, op);
+  }
+
+  for (const op of operations) {
+    const deps = op['depends'] as string[] | undefined;
+    if (Array.isArray(deps)) {
+      for (const dep of deps) {
+        if (idSet.has(dep)) {
+          adj.get(dep)!.push(op['id'] as string);
+          inDeg.set(op['id'] as string, inDeg.get(op['id'] as string)! + 1);
+        }
+      }
+    }
+  }
+
+  // Topological sort (Kahn's)
+  const queue: string[] = [];
+  for (const [id, deg] of inDeg) {
+    if (deg === 0) queue.push(id);
+  }
+  const sorted: string[] = [];
+  while (queue.length) {
+    const n = queue.shift()!;
+    sorted.push(n);
+    for (const nb of adj.get(n)!) {
+      const nd = inDeg.get(nb)! - 1;
+      inDeg.set(nb, nd);
+      if (nd === 0) queue.push(nb);
+    }
+  }
+
+  // Longest path
+  const dist = new Map<string, number>();
+  for (const id of sorted) {
+    const op = opMap.get(id)!;
+    const deps = op['depends'] as string[] | undefined;
+    let maxPrev = 0;
+    if (Array.isArray(deps)) {
+      for (const dep of deps) {
+        if (dist.has(dep)) maxPrev = Math.max(maxPrev, dist.get(dep)!);
+      }
+    }
+    dist.set(id, maxPrev + timeOf(op));
+  }
+
+  let maxTime = 0;
+  for (const t of dist.values()) {
+    if (t > maxTime) maxTime = t;
+  }
+  return maxTime;
 }
 
 // ---------------------------------------------------------------------------
@@ -318,6 +653,7 @@ export const importMachine = setup({
           extraction: context.extraction!,
           lastError: context.lastError,
           lastRawOutput: context.lastRawOutput,
+          isFinalAttempt: context.attempt >= MAX_RETRIES,
         }),
         onDone: {
           target: 'done',

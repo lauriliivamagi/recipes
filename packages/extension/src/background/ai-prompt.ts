@@ -1,7 +1,9 @@
 /**
  * AI prompt for recipe parsing.
- * AI prompt for structured recipe JSON extraction.
- * Embeds the JSON Schema and valid tags inline so the prompt is self-contained.
+ * Embeds the full JSON Schema for LLM guidance and provides critical rules,
+ * validation constraints, and parsing guidelines. The skeleton schema used
+ * for constrained decoding (format field) is lightweight — the full schema
+ * here tells the model what fields to produce.
  */
 
 import recipeSchemaJson from '../../../build/config/recipe-schema.json' with { type: 'json' };
@@ -11,8 +13,6 @@ const MAX_CONTENT_LENGTH = 15_000;
 
 export function buildSystemPrompt(): string {
   return `You are decomposing a recipe from natural-language text into a structured JSON representation.
-
-CRITICAL OUTPUT FORMAT: Your entire response must be a single JSON object. Start with { and end with }. Do NOT wrap in markdown code fences. Do NOT include any text before or after the JSON. Do NOT echo the recipe content back.
 
 ## Output Schema
 
@@ -119,6 +119,42 @@ export function buildUserPrompt(extraction: Extraction, previousErrors?: string,
     }
   }
 
+  // Extract verified facts from schema.org to anchor the LLM
+  if (extraction.schemaOrgData) {
+    const recipeData = findRecipeSchema(extraction.schemaOrgData) as Record<string, unknown> | null;
+    if (recipeData) {
+      const facts: string[] = [];
+
+      // Servings
+      const recipeYield = recipeData['recipeYield'];
+      if (recipeYield != null) {
+        const parsed = typeof recipeYield === 'number'
+          ? recipeYield
+          : parseInt(String(Array.isArray(recipeYield) ? recipeYield[0] : recipeYield), 10);
+        if (!isNaN(parsed) && parsed > 0) facts.push(`Servings: ${parsed}`);
+      }
+
+      // Times (ISO 8601 durations like PT30M, PT1H30M)
+      const prepTime = parseIsoDuration(recipeData['prepTime']);
+      const cookTime = parseIsoDuration(recipeData['cookTime']);
+      const totalTime = parseIsoDuration(recipeData['totalTime']);
+      if (prepTime > 0) facts.push(`Prep time: ${prepTime}s`);
+      if (cookTime > 0) facts.push(`Cook time: ${cookTime}s`);
+      if (totalTime > 0) facts.push(`Total time: ${totalTime}s`);
+
+      // Ingredient count
+      const ingList = recipeData['recipeIngredient'];
+      if (Array.isArray(ingList) && ingList.length > 0) {
+        facts.push(`Ingredient count: ${ingList.length}`);
+      }
+
+      if (facts.length > 0) {
+        prompt += `## Verified Facts (from structured data — use these as ground truth)\n`;
+        prompt += facts.map((f) => `- ${f}`).join('\n') + '\n\n';
+      }
+    }
+  }
+
   // Truncate content to avoid token limits
   const content = extraction.contentMarkdown.length > MAX_CONTENT_LENGTH
     ? extraction.contentMarkdown.slice(0, MAX_CONTENT_LENGTH) + '\n\n[Content truncated]'
@@ -138,10 +174,24 @@ export function buildUserPrompt(extraction: Extraction, previousErrors?: string,
 }
 
 /**
+ * Parse an ISO 8601 duration (e.g., PT30M, PT1H30M, PT2H) into seconds.
+ * Returns 0 if unparseable.
+ */
+export function parseIsoDuration(value: unknown): number {
+  if (typeof value !== 'string') return 0;
+  const match = value.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i);
+  if (!match) return 0;
+  const hours = parseInt(match[1] ?? '0', 10);
+  const minutes = parseInt(match[2] ?? '0', 10);
+  const seconds = parseInt(match[3] ?? '0', 10);
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+/**
  * Walk schema.org data to find an object with @type "Recipe".
  * schemaOrgData may be an array, a single object, or nested @graph.
  */
-function findRecipeSchema(data: unknown): unknown | null {
+export function findRecipeSchema(data: unknown): unknown | null {
   if (!data || typeof data !== 'object') return null;
 
   if (Array.isArray(data)) {

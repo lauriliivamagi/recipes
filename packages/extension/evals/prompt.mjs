@@ -2,6 +2,10 @@
  * Prompt function for promptfoo.
  * Mirrors buildSystemPrompt() and buildUserPrompt() from
  * extension/src/background/ai-prompt.ts without TypeScript imports.
+ *
+ * NOTE: Unlike the extension (which uses generateObject and gets schema
+ * injection from the AI SDK), promptfoo uses generateText-style calls,
+ * so we must embed the JSON Schema in the system prompt here.
  */
 import { readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
@@ -14,9 +18,10 @@ const recipeSchema = JSON.parse(readFileSync(resolve(packagesDir, 'build/config/
 const tags = JSON.parse(readFileSync(resolve(packagesDir, 'domain/config/tags.json'), 'utf-8'));
 
 // Mirrors buildSystemPrompt() from ai-prompt.ts — kept in sync manually.
-// If the prompt changes there, update here too.
+// The extension version omits the schema (generateObject injects it).
+// This version includes it because promptfoo providers need it in the prompt.
 function buildSystemPrompt() {
-  return `You are decomposing a recipe from natural-language text into a structured JSON representation.
+  return `You are decomposing a recipe from natural-language text into a structured JSON representation that conforms to the provided schema.
 
 CRITICAL OUTPUT FORMAT: Your entire response must be a single JSON object. Start with { and end with }. Do NOT wrap in markdown code fences. Do NOT include any text before or after the JSON. Do NOT echo the recipe content back.
 
@@ -105,13 +110,74 @@ Schema.org does NOT give you: DAG edges, active vs passive time, equipment occup
 
 const MAX_CONTENT_LENGTH = 15_000;
 
+/** Parse ISO 8601 duration (PT30M, PT1H30M) to seconds. Returns 0 if unparseable. */
+function parseIsoDuration(value) {
+  if (typeof value !== 'string') return 0;
+  const match = value.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i);
+  if (!match) return 0;
+  return parseInt(match[1] ?? '0', 10) * 3600
+    + parseInt(match[2] ?? '0', 10) * 60
+    + parseInt(match[3] ?? '0', 10);
+}
+
+/** Walk schema.org data to find an object with @type "Recipe". */
+function findRecipeSchema(data) {
+  if (!data || typeof data !== 'object') return null;
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      const found = findRecipeSchema(item);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (data['@type'] === 'Recipe') return data;
+  if (Array.isArray(data['@graph'])) return findRecipeSchema(data['@graph']);
+  return null;
+}
+
 function buildUserPrompt(extraction) {
   let prompt = '';
   prompt += `## Source URL\n${extraction.url}\n\n`;
   prompt += `## Language\n${extraction.language}\n\n`;
 
   if (extraction.schemaOrgData) {
-    prompt += `## schema.org/Recipe Data\n\`\`\`json\n${JSON.stringify(extraction.schemaOrgData, null, 2)}\n\`\`\`\n\n`;
+    const recipeData = findRecipeSchema(extraction.schemaOrgData);
+    if (recipeData) {
+      prompt += `## schema.org/Recipe Data\n\`\`\`json\n${JSON.stringify(recipeData, null, 2)}\n\`\`\`\n\n`;
+    }
+  }
+
+  // Extract verified facts from schema.org to anchor the LLM
+  if (extraction.schemaOrgData) {
+    const recipeData = findRecipeSchema(extraction.schemaOrgData);
+    if (recipeData) {
+      const facts = [];
+
+      const recipeYield = recipeData['recipeYield'];
+      if (recipeYield != null) {
+        const parsed = typeof recipeYield === 'number'
+          ? recipeYield
+          : parseInt(String(Array.isArray(recipeYield) ? recipeYield[0] : recipeYield), 10);
+        if (!isNaN(parsed) && parsed > 0) facts.push(`Servings: ${parsed}`);
+      }
+
+      const prepTime = parseIsoDuration(recipeData['prepTime']);
+      const cookTime = parseIsoDuration(recipeData['cookTime']);
+      const totalTime = parseIsoDuration(recipeData['totalTime']);
+      if (prepTime > 0) facts.push(`Prep time: ${prepTime}s`);
+      if (cookTime > 0) facts.push(`Cook time: ${cookTime}s`);
+      if (totalTime > 0) facts.push(`Total time: ${totalTime}s`);
+
+      const ingList = recipeData['recipeIngredient'];
+      if (Array.isArray(ingList) && ingList.length > 0) {
+        facts.push(`Ingredient count: ${ingList.length}`);
+      }
+
+      if (facts.length > 0) {
+        prompt += `## Verified Facts (from structured data — use these as ground truth)\n`;
+        prompt += facts.map((f) => `- ${f}`).join('\n') + '\n\n';
+      }
+    }
   }
 
   const content = extraction.contentMarkdown.length > MAX_CONTENT_LENGTH

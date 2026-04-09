@@ -29,6 +29,9 @@ const AVAILABLE_MODELS: Record<LLMProvider, Array<{ id: string; name: string }>>
     { id: 'gpt-oss:20b', name: 'GPT OSS 20B' },
     { id: 'gemma3:12b', name: 'Gemma 3 12B' },
   ],
+  'ollama-cloud': [
+    { id: 'gemma4:31b-cloud', name: 'Gemma 4 31B' },
+  ],
 };
 
 // --- DOM refs ---
@@ -91,11 +94,16 @@ function renderSettings(): void {
   apiKeyInput.value = '';
   apiKeyInput.placeholder = hasKey ? '••••••••' : 'Enter API key...';
 
-  // Show Ollama URL field only for ollama
-  ollamaUrlRow.className = currentSettings.provider === 'ollama' ? 'visible' : '';
+  // Show Ollama URL field for both ollama variants
+  const isOllama = currentSettings.provider === 'ollama' || currentSettings.provider === 'ollama-cloud';
+  ollamaUrlRow.className = isOllama ? 'visible' : '';
   if (currentSettings.provider === 'ollama') {
     ollamaUrlInput.value = currentSettings.ollamaBaseUrl ?? '';
+    ollamaUrlInput.placeholder = 'http://localhost:11434/api';
     apiKeyInput.placeholder = 'Not required for Ollama';
+  } else if (currentSettings.provider === 'ollama-cloud') {
+    ollamaUrlInput.value = currentSettings.ollamaCloudBaseUrl ?? '';
+    ollamaUrlInput.placeholder = 'https://ollama.com/api';
   }
 }
 
@@ -109,8 +117,8 @@ function populateModels(provider: LLMProvider): void {
     modelSelect.appendChild(option);
   }
 
-  // For Ollama, add custom model option
-  if (provider === 'ollama') {
+  // For Ollama variants, add custom model option
+  if (provider === 'ollama' || provider === 'ollama-cloud') {
     const custom = document.createElement('option');
     custom.value = '__custom__';
     custom.textContent = 'Custom model...';
@@ -150,7 +158,7 @@ async function onModelChange(): Promise<void> {
 async function onSaveKey(): Promise<void> {
   if (!currentSettings) return;
   const key = apiKeyInput.value.trim();
-  if (!key && currentSettings.provider !== 'ollama') return;
+  if (!key && currentSettings.provider !== 'ollama') return; // only local ollama can save without a key
 
   if (key) {
     currentSettings.apiKeys[currentSettings.provider] = key;
@@ -159,6 +167,9 @@ async function onSaveKey(): Promise<void> {
   if (currentSettings.provider === 'ollama') {
     const url = ollamaUrlInput.value.trim();
     currentSettings.ollamaBaseUrl = url || undefined;
+  } else if (currentSettings.provider === 'ollama-cloud') {
+    const url = ollamaUrlInput.value.trim();
+    currentSettings.ollamaCloudBaseUrl = url || undefined;
   }
 
   await saveCurrentSettings();

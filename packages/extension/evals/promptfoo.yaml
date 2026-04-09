@@ -5,33 +5,39 @@ prompts:
 
 providers:
   # Single-shot (baseline — no retries)
+  # All providers use the skeleton schema for constrained JSON decoding,
+  # matching the extension's generateObject setup. The full schema is in the prompt.
   - id: google:gemini-2.5-flash
     label: 'Gemini 2.5 Flash (single)'
     config:
       temperature: 0
       maxOutputTokens: 16384
       responseMimeType: application/json
+      responseSchema: file://../../build/config/recipe-skeleton-schema.json
   - id: google:gemini-3-flash-preview
     label: 'Gemini 3 Flash (single)'
     config:
       temperature: 0
       maxOutputTokens: 8192
+      responseMimeType: application/json
+      responseSchema: file://../../build/config/recipe-skeleton-schema.json
   - id: google:gemini-3.1-flash-lite-preview
     label: 'Gemini 3.1 Flash Lite (single)'
     config:
       temperature: 0
       maxOutputTokens: 16384
       responseMimeType: application/json
+      responseSchema: file://../../build/config/recipe-skeleton-schema.json
 
-  # Ollama Pro — commented out due to slow cloud inference (~18 tok/s)
-  # - id: ollama:chat:gemma4:31b-cloud
-  #   label: 'Gemma 4 31B (Ollama Pro, single)'
-  #   config:
-  #     temperature: 0
-  #     num_predict: 8192
-  #     think: false
-  #     passthrough:
-  #       format: json
+  # Ollama Cloud — skeleton schema via format passthrough
+  - id: ollama:chat:gemma4:31b-cloud
+    label: 'Gemma 4 31B (Ollama Cloud, single)'
+    config:
+      temperature: 1
+      num_predict: 8192
+      think: false
+      passthrough:
+        format: file://../../build/config/recipe-skeleton-schema.json
 
   # With retry loop (mirrors extension behavior — up to 3 attempts with error feedback)
   - id: file://retry-provider.mjs
@@ -42,11 +48,17 @@ providers:
         temperature: 0
         maxOutputTokens: 16384
         responseMimeType: application/json
+        responseSchema: file://../../build/config/recipe-skeleton-schema.json
       maxRetries: 3
   - id: file://retry-provider.mjs
     label: 'Gemini 3 Flash (3 retries)'
     config:
       provider: google:gemini-3-flash-preview
+      providerConfig:
+        temperature: 0
+        maxOutputTokens: 8192
+        responseMimeType: application/json
+        responseSchema: file://../../build/config/recipe-skeleton-schema.json
       maxRetries: 3
   - id: file://retry-provider.mjs
     label: 'Gemini 3.1 Flash Lite (3 retries)'
@@ -56,18 +68,19 @@ providers:
         temperature: 0
         maxOutputTokens: 16384
         responseMimeType: application/json
+        responseSchema: file://../../build/config/recipe-skeleton-schema.json
       maxRetries: 3
-  # - id: file://retry-provider.mjs
-  #   label: 'Gemma 4 31B Ollama Pro (3 retries)'
-  #   config:
-  #     provider: ollama:chat:gemma4:31b-cloud
-  #     providerConfig:
-  #       temperature: 0
-  #       num_predict: 8192
-  #       think: false
-  #       passthrough:
-  #         format: json
-  #     maxRetries: 3
+  - id: file://retry-provider.mjs
+    label: 'Gemma 4 31B Ollama Cloud (3 retries)'
+    config:
+      provider: ollama:chat:gemma4:31b-cloud
+      providerConfig:
+        temperature: 1
+        num_predict: 8192
+        think: false
+        passthrough:
+          format: file://../../build/config/recipe-skeleton-schema.json
+      maxRetries: 3
 
 defaultTest:
   assert:

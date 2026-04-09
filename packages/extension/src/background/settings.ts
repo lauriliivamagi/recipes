@@ -25,6 +25,7 @@ export async function getSettings(): Promise<AISettings> {
     model: stored.model ?? DEFAULT_SETTINGS.model,
     apiKeys: stored.apiKeys ?? {},
     ollamaBaseUrl: stored.ollamaBaseUrl,
+    ollamaCloudBaseUrl: stored.ollamaCloudBaseUrl,
   };
 }
 
@@ -48,7 +49,7 @@ export async function setApiKey(provider: LLMProvider, key: string): Promise<voi
 
 /** Check if a provider has an API key configured @knipignore */
 export async function isProviderConfigured(provider: LLMProvider): Promise<boolean> {
-  if (provider === "ollama") return true;
+  if (provider === "ollama") return true; // local Ollama runs unauthenticated; ollama-cloud falls through to key check
   const key = await getApiKey(provider);
   return !!key;
 }
