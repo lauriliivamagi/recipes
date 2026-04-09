@@ -1,3 +1,5 @@
+# Recipe Visualizer
+
 ![Build](https://github.com/lauriliivamagi/recipes/actions/workflows/deploy.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-22%2B-brightgreen)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
@@ -5,27 +7,23 @@
 ![Vite](https://img.shields.io/badge/Vite-v8-646CFF)
 ![PWA](https://img.shields.io/badge/PWA-ready-purple)
 
-# Recipe Visualizer
+**Recipes are graphs, not lists.** This app models each recipe as a directed acyclic graph, finds tasks that can run in parallel, and fills idle time so dinner is ready sooner.
 
-**Recipes are graphs, not lists.** This app transforms recipe text into interactive cooking guides that schedule tasks in parallel and fill idle time, so dinner is ready sooner.
+[Live demo](https://lauriliivamagi.github.io/recipes/)
 
-![Recipe Visualizer — Spaghetti Bolognese overview with phase cards and mode toggle](docs/screenshot-recipe.png)
+![Recipe overview with phase cards, servings adjuster, and mode toggle](docs/screenshot-hero.png)
 
 ## The problem with traditional recipes
 
-A traditional Spaghetti Bolognese recipe reads as a numbered list: dice onions, sauté vegetables, brown meat, simmer sauce, boil pasta, serve. But it hides the structure underneath:
+A Bolognese recipe reads as a numbered list, but it hides real structure:
 
-- The sauce simmers for **30 minutes** with only 3 minutes of active stirring. That's 27 minutes of dead time you could use to boil pasta or grate Parmesan.
+- The sauce simmers for 30 minutes with only 3 minutes of active stirring. That's 27 minutes of dead time you could use to boil pasta or grate Parmesan.
 - The cutting board is needed for four prep tasks, but they don't all have to happen before cooking starts.
-- The recipe says "75 minutes" but an experienced cook finishes in **62**. Where do those 13 minutes go?
-
-Experienced cooks do this in their heads. They read ahead, spot idle windows, and interleave tasks. Beginners follow step 1, then step 2, then step 3, and dinner takes longer than it needs to.
-
-**What if the recipe itself could figure out the optimal schedule?**
+- The recipe says "75 minutes" but an experienced cook finishes in 62. Where do those 13 minutes go?
 
 ## How it works
 
-The app models each recipe as a **directed acyclic graph** (DAG). Nodes are operations, edges are dependencies, and idle windows are where the optimizer finds time to save:
+Nodes are operations, edges are dependencies, and idle windows are where the optimizer saves time:
 
 ```mermaid
 graph LR
@@ -54,32 +52,23 @@ graph LR
     style grate fill:#f4a261,color:#111
 ```
 
-**Boil pasta** and **grate parmesan** don't depend on the simmer phase. They can run in parallel, and the optimizer finds these gaps automatically.
+Boiling pasta and grating Parmesan don't depend on the simmer phase. They can run in parallel, and the scheduler finds these gaps automatically.
 
-### Two execution modes
+The app has two modes. Relaxed mode puts all prep first, then cooks sequentially — 75 minutes for this Bolognese. Optimized mode distributes prep into idle windows during cooking and finishes in 62 minutes. Same recipe, 17% less wall-clock time.
 
-| Mode | Strategy | Bolognese time |
-|------|----------|----------------|
-| **Relaxed** | All prep upfront, then cooking in sequence | 75 min |
-| **Optimized** | Prep distributed into idle windows during cooking | 62 min |
+![Step-by-step cooking view with active timer and next-step preview](docs/screenshot-recipe.png)
 
-In **relaxed mode**, you chop everything first, then cook. Low stress, no multitasking.
+## What you get while cooking
 
-In **optimized mode**, the app tells you: *"The sauce is simmering. You have 27 minutes of idle time. Boil the pasta and grate the Parmesan now."* Same recipe, 17% less wall-clock time.
+- Step-by-step focus cards show one task at a time, with background tasks visible in an awareness bar
+- Built-in timers for any passive operation (simmering, resting, baking)
+- Screen wake lock — your screen stays on, no flour-covered unlock
+- Servings adjuster that scales ingredients and operation times
+- Offline-ready PWA — install to your home screen, works without internet
+- Dark theme for kitchen lighting
+- Search, filter by tag, or browse by difficulty
 
-## Features
-
-- **Two cooking modes** — relaxed (all prep first) or optimized (prep during idle windows)
-- **Step-by-step cooking** — focus card UI shows one task at a time with context about what's running in the background
-- **Built-in timers** — start a timer for any passive operation
-- **Screen wake lock** — screen stays on while cooking (no flour-covered unlock)
-- **Servings adjuster** — scale ingredients and operation times up or down
-- **Offline-ready PWA** — install to your home screen, works without internet
-- **Dark theme** — easy on the eyes in kitchen lighting
-- **i18n** — English and Estonian; add a JSON file for your language
-- **Search and filter** — browse by tag, difficulty, or free text
-- **Self-contained HTML** — each recipe page is a standalone file you can email to someone
-- **Claude Code plugin** — import recipes from URLs, images, or pasted text with AI assistance
+![Recipe catalog with search bar and tag filters](docs/screenshot-index.png)
 
 ## Quick start
 
@@ -87,18 +76,17 @@ In **optimized mode**, the app tells you: *"The sauce is simmering. You have 27 
 git clone https://github.com/lauriliivamagi/recipes.git
 cd recipes
 npm install
-npm run build
+npm run dev      # dev server with hot reload
+npm run build    # production build to site/
 ```
 
-Open `site/index.html` in your browser, or run `npm run dev` for live development with hot reload.
-
-> **Requires** Node.js 22+.
+> Requires Node.js 22+.
 
 ## Architecture
 
-The codebase uses **vertical slice architecture** with domain-driven design. Each domain concern is a self-contained slice with its own types, logic, and tests.
+Vertical slice architecture with domain-driven design. Each domain concern is a self-contained slice with its own types, logic, and tests.
 
-```
+```text
   Recipe JSON                    Vite Build Pipeline            Output
   ───────────                    ──────────────────             ──────
   packages/build/recipes/        packages/build/src/            site/
@@ -112,112 +100,18 @@ The codebase uses **vertical slice architecture** with domain-driven design. Eac
   ├─ recipe/                     ├─ catalog/
   ├─ schedule/                   ├─ recipe/
   ├─ scaling/                    ├─ overview/
-  ├─ catalog/             ├─ cooking/
-  └─ cooking/             └─ state/
+  ├─ catalog/                    ├─ cooking/
+  └─ cooking/                    └─ state/
 ```
 
-**Domain slices** (pure TypeScript, no DOM dependencies):
+Domain logic is pure TypeScript with Zod validation — no DOM dependencies. The UI layer uses Lit v3 web components with an XState v5 state machine for the cooking flow. Built with Vite 8, tested with Vitest (unit) and Playwright (E2E). CI deploys to GitHub Pages on every push to master.
 
-- `recipe/` — types, Zod schema, parser, ingredient resolution
-- `schedule/` — DAG validation, toposort, critical path, relaxed/optimized scheduling
-- `scaling/` — unit conversion, temperature, rounding, serving scaling
-- `catalog/` — recipe search and tag filtering
-- `cooking/` — step navigation, timer lifecycle
+<details>
+<summary>Full project tree</summary>
 
-**UI layer** — Lit v3 web components with XState v5 state machine for the cooking flow.
-
-## Recipe data format
-
-Recipes are JSON files validated against [`config/recipe-schema.json`](config/recipe-schema.json). Here's the essential structure:
-
-```json
-{
-  "meta": {
-    "title": "Spaghetti Bolognese",
-    "slug": "spaghetti-bolognese",
-    "language": "en",
-    "tags": ["italian", "pasta", "weeknight"],
-    "servings": 4,
-    "totalTime": { "relaxed": 75, "optimized": 62 },
-    "difficulty": "easy"
-  },
-  "ingredients": [
-    { "id": "onion", "name": "Onion", "quantity": { "min": 1, "unit": "whole" }, "group": "vegetables" }
-  ],
-  "equipment": [
-    { "id": "large-pan", "name": "Large heavy-bottomed pan", "count": 1 }
-  ],
-  "operations": [
-    {
-      "id": "dice-onion",
-      "type": "prep",
-      "action": "dice",
-      "inputs": ["onion"],
-      "equipment": { "use": "cutting-board", "release": true },
-      "time": 3,
-      "activeTime": 3,
-      "details": "Finely dice the onion"
-    },
-    {
-      "id": "simmer-sauce",
-      "type": "cook",
-      "action": "simmer",
-      "inputs": ["build-sauce"],
-      "time": 30,
-      "activeTime": 3,
-      "scalable": false,
-      "heat": "low",
-      "output": "sauce"
-    }
-  ],
-  "subProducts": [
-    { "id": "sauce", "name": "Bolognese Sauce", "finalOp": "simmer-sauce" }
-  ],
-  "finishSteps": [
-    { "action": "toss", "inputs": ["simmer-sauce", "boil-pasta"], "details": "Combine and serve" }
-  ]
-}
-```
-
-**Key concepts:**
-
-| Field | What it does |
-|-------|-------------|
-| `inputs` | Creates DAG edges — reference ingredient IDs or previous operation IDs |
-| `time` vs `activeTime` | A 30-min simmer with 3 min active creates a 27-min idle window the optimizer can fill |
-| `equipment.release` | `true` = equipment becomes available; `false` = stays occupied for chained operations |
-| `scalable` | `false` means time doesn't change with servings (simmering, baking, resting) |
-| `subProducts` | Named intermediate results (sauce, dough, filling) the UI can label and track |
-
-## Adding recipes
-
-### With Claude Code
-
-### Manually
-
-1. Create `packages/build/recipes/<cuisine>/<slug>.json` (use [`spaghetti-bolognese.json`](packages/build/recipes/italian/spaghetti-bolognese.json) as a template)
-2. Define ingredients, equipment, and operations
-3. Wire up `inputs` arrays to form the DAG
-4. Run `pnpm build`
-5. Open `site/<cuisine>/<slug>.html` in your browser
-
-### Suggested tags
-
-Tags are freeform, but the app recognizes these categories from [`config/tags.json`](config/tags.json):
-
-| Category | Tags |
-|----------|------|
-| Cuisine | italian, asian, mexican, french, indian, mediterranean, american, estonian, nordic |
-| Meal | breakfast, lunch, dinner, snack, dessert |
-| Type | pasta, soup, salad, stew, baking, grilling, stir-fry, roast |
-| Effort | weeknight, weekend, quick, meal-prep |
-| Dietary | vegetarian, vegan, gluten-free, dairy-free, low-carb |
-
-## Project structure
-
-```
+```text
 packages/
-  domain/                 @recipe/domain — pure TypeScript domain logic (no DOM)
+  domain/                 @recipe/domain — pure TypeScript domain logic
     src/
       recipe/             types, Zod schema, parser, ingredient resolution
       schedule/           DAG validation, toposort, critical path, scheduling
@@ -240,76 +134,102 @@ packages/
     evals/                PromptFoo AI evaluation suite for recipe parsing
 config/                   JSON schemas + lookup tables (shared across packages)
 site/                     built output (deployed via CI)
-.github/workflows/
-  └─ deploy.yml           GitHub Actions → GitHub Pages (test + deploy)
 ```
 
-## Tech stack
+</details>
 
-| Layer | Technology |
-|-------|-----------|
-| Language | TypeScript (strict mode) |
-| Build | Vite 8 with custom recipe plugin |
-| UI | Lit v3 web components |
-| State | XState v5 state machine |
-| Data | JSON with Zod validation |
-| Optimizer | Custom DAG scheduler (topological sort, critical path DP, greedy packing) |
-| Styling | CSS custom properties, `clamp()` fluid typography, scoped component styles |
-| PWA | Service worker (stale-while-revalidate), web app manifest, Wake Lock API |
-| Unit tests | Vitest (74 tests) |
-| E2E tests | Playwright (20 tests) |
-| i18n | JSON string bundles with deep-merge fallback |
-| CI/CD | GitHub Actions → GitHub Pages |
-| AI tooling | Claude Code plugin for recipe parsing and import |
+## Recipe data format
+
+Each recipe is a JSON file validated against [`config/recipe-schema.json`](config/recipe-schema.json):
+
+```json
+{
+  "meta": {
+    "title": "Spaghetti Bolognese",
+    "slug": "spaghetti-bolognese",
+    "tags": ["italian", "pasta", "weeknight"],
+    "servings": 4,
+    "totalTime": { "relaxed": 75, "optimized": 62 },
+    "difficulty": "easy"
+  },
+  "ingredients": [{ "id": "onion", "name": "Onion", "quantity": { "min": 1, "unit": "whole" }, "group": "vegetables" }],
+  "operations": [
+    {
+      "id": "simmer-sauce",
+      "type": "cook",
+      "action": "simmer",
+      "inputs": ["build-sauce"],
+      "time": 30,
+      "activeTime": 3,
+      "scalable": false,
+      "heat": "low",
+      "output": "sauce"
+    }
+  ]
+}
+```
+
+| Field                  | What it does                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------------- |
+| `inputs`               | Creates DAG edges — reference ingredient IDs or previous operation IDs                |
+| `time` vs `activeTime` | A 30-min simmer with 3 min active creates a 27-min idle window the optimizer can fill |
+| `equipment.release`    | `true` = equipment freed after this step; `false` = stays occupied                    |
+| `scalable`             | `false` means time doesn't change with servings (simmering, baking, resting)          |
+| `subProducts`          | Named intermediate results (sauce, dough, filling) the UI can label and track         |
+
+## Adding recipes
+
+1. Create `packages/build/recipes/<cuisine>/<slug>.json` (use [`spaghetti-bolognese.json`](packages/build/recipes/italian/spaghetti-bolognese.json) as a template)
+2. Define ingredients, equipment, and operations
+3. Wire up `inputs` arrays to form the DAG
+4. Run `pnpm build`
+5. Open `site/<cuisine>/<slug>.html` in your browser
+
+There's also a Chrome extension (`packages/extension/`) that imports recipes from URLs, images, or pasted text using AI.
+
+<details>
+<summary>Suggested tags</summary>
+
+Tags are freeform, but the app recognizes these categories from [`config/tags.json`](config/tags.json):
+
+| Category | Tags                                                                               |
+| -------- | ---------------------------------------------------------------------------------- |
+| Cuisine  | italian, asian, mexican, french, indian, mediterranean, american, estonian, nordic |
+| Meal     | breakfast, lunch, dinner, snack, dessert                                           |
+| Type     | pasta, soup, salad, stew, baking, grilling, stir-fry, roast                        |
+| Effort   | weeknight, weekend, quick, meal-prep                                               |
+| Dietary  | vegetarian, vegan, gluten-free, dairy-free, low-carb                               |
+
+</details>
 
 ## Roadmap
 
-- [ ] More recipes (only 2 Italian so far — the schema supports any cuisine)
+- [ ] More recipes (8 so far across Italian and Estonian)
 - [ ] Shopping list generator across multiple recipes
-- [ ] Print-friendly CSS stylesheet
+- [ ] Print-friendly CSS
 - [ ] More languages (i18n framework is ready — add a JSON file)
 - [ ] Nutrition estimates per ingredient
 - [ ] Voice control for hands-free step navigation
 - [ ] Equipment timeline (Gantt chart showing pan/oven utilization)
-- [ ] Recipe sharing via QR codes
 
 ## Contributing
 
-Contributions are welcome. The codebase is organized as vertical slices so you can work on one area without understanding the whole system.
-
-### Setup
-
-```bash
-git clone https://github.com/lauriliivamagi/recipes.git
-cd recipes
-npm install
-```
-
-### Development workflow
-
 ```bash
 npm run dev          # Vite dev server with hot reload
-npm run typecheck    # TypeScript strict mode check
-npm test             # Vitest unit tests (74 tests)
-npm run test:e2e     # Playwright E2E tests (20 tests, requires npm run build first)
+npm run typecheck    # TypeScript strict mode
+npm test             # Vitest unit tests
+npm run test:e2e     # Playwright E2E (requires build first)
 npm run build        # Production build to site/
 npm run preview      # Serve production build locally
 ```
 
-### Where to contribute
+Where to help:
 
-- **Add recipes** — Create `recipes/<cuisine>/<slug>.json` following the schema. See [spaghetti-bolognese.json](recipes/italian/spaghetti-bolognese.json) as a template.
-- **Add a language** — Copy `packages/build/templates/i18n/en.json` to `packages/build/templates/i18n/<code>.json` and translate the strings.
-- **Domain logic** — Pure TypeScript in `src/domain/`. Each slice has co-located `.test.ts` files. Run `npm test` to verify.
-- **UI components** — Lit web components in `src/ui/`. Each component is a self-contained `.ts` file with scoped styles.
-- **E2E tests** — Playwright specs in `e2e/`. Run `npm run build && npm run test:e2e`.
-
-### Code conventions
-
-- Domain modules have **zero DOM dependencies** — they work in both Node.js and the browser.
-- Unit tests are **co-located** with source files (`foo.ts` has `foo.test.ts` next to it).
-- Imports use **`.js` extensions** (TypeScript + ES modules convention for Vite).
-- CSS uses the **design tokens** defined in `src/ui/shared/styles.ts`.
+- Add recipes — create `packages/build/recipes/<cuisine>/<slug>.json` following the schema
+- Add a language — copy `packages/build/templates/i18n/en.json`, translate, save as `<code>.json`
+- Domain logic — pure TypeScript in `packages/domain/src/`, co-located `.test.ts` files
+- UI components — Lit web components in `packages/ui/src/`, self-contained with scoped styles
+- E2E tests — Playwright specs in `e2e/`
 
 ## License
 
