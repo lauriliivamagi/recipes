@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# TypeScript incremental build cache
+*.tsbuildinfo
+
 # Generated output (deploy separately or use gh-pages branch)
 site/
 
