@@ -180,16 +180,16 @@ export class FocusCard extends LitElement {
         ${this.ingredients.length > 0 ? html`
           <div class="focus-ingredients">
             ${this.ingredients.map((ing, i) => {
-              const scaled = scaleQuantity(ing.quantity, this.scaleFactor);
+              const scaled = ing.quantity ? scaleQuantity(ing.quantity, this.scaleFactor) : null;
               const altText = ing.alternatives?.length
                 ? ` (or ${ing.alternatives.map(a => {
-                    const aScaled = scaleQuantity(a.quantity, this.scaleFactor);
-                    return `${formatQuantity(aScaled)} ${a.name}`;
+                    const aScaled = a.quantity ? scaleQuantity(a.quantity, this.scaleFactor) : null;
+                    return aScaled ? `${formatQuantity(aScaled)} ${a.name}` : a.name;
                   }).join(' or ')})`
                 : '';
               return html`
                 <div class="ingredient-line" style="--ing-index: ${i}">
-                  <span class="qty">${formatQuantity(scaled)}</span> ${ing.name}${altText}
+                  ${scaled ? html`<span class="qty">${formatQuantity(scaled)}</span> ` : nothing}${ing.name}${altText}
                 </div>
               `;
             })}

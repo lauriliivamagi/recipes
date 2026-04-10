@@ -198,7 +198,7 @@ describe('recipeSchema', () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.ingredients[0]!.quantity).toEqual({ min: 400, unit: 'g' });
-      expect(result.data.ingredients[0]!.quantity.max).toBeUndefined();
+      expect(result.data.ingredients[0]!.quantity!.max).toBeUndefined();
     }
   });
 
@@ -271,6 +271,22 @@ describe('recipeSchema', () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.ingredients[0]!.alternatives).toBeUndefined();
+    }
+  });
+
+  it('accepts ingredient without quantity (garnish / to taste)', () => {
+    const input = {
+      ...validRecipeInput,
+      ingredients: [
+        ...validRecipeInput.ingredients,
+        { id: 'parsley', name: 'Fresh parsley', group: 'vegetables' },
+      ],
+    };
+    const result = recipeSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const parsley = result.data.ingredients.find(i => i.id === 'parsley')!;
+      expect(parsley.quantity).toBeUndefined();
     }
   });
 

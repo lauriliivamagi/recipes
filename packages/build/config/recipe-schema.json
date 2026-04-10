@@ -222,7 +222,6 @@
               "required": [
                 "id",
                 "name",
-                "quantity",
                 "group"
               ],
               "additionalProperties": false
@@ -232,7 +231,6 @@
         "required": [
           "id",
           "name",
-          "quantity",
           "group"
         ],
         "additionalProperties": false

@@ -218,6 +218,18 @@ describe('postProcessRaw', () => {
       postProcessRaw(raw, makeExtraction({ language: 'et' }));
       expect((raw['meta'] as Record<string, unknown>)['language']).toBe('et');
     });
+
+    it('normalizes BCP 47 tag to ISO 639-1 two-letter code', () => {
+      const raw = makeRawRecipe({ meta: { title: 'Test', slug: 'test', language: 'en' } });
+      postProcessRaw(raw, makeExtraction({ language: 'en-US' }));
+      expect((raw['meta'] as Record<string, unknown>)['language']).toBe('en');
+    });
+
+    it('lowercases language code', () => {
+      const raw = makeRawRecipe({ meta: { title: 'Test', slug: 'test', language: 'en' } });
+      postProcessRaw(raw, makeExtraction({ language: 'PT-BR' }));
+      expect((raw['meta'] as Record<string, unknown>)['language']).toBe('pt');
+    });
   });
 
   // --- Fix 2: Override meta.source from extraction URL ---
@@ -364,6 +376,22 @@ describe('postProcessRaw', () => {
       expect(ings[0]!['id']).toBe('flour');
     });
 
+    it('keeps unreferenced ingredient when its name appears in original text', () => {
+      const raw = makeRawRecipe({
+        ingredients: [
+          { id: 'flour', name: 'Flour', quantity: { min: 200, unit: 'g' }, group: 'pantry' },
+          { id: 'brown-sugar', name: 'brown sugar', quantity: { min: 1, unit: 'tbsp' }, group: 'pantry' },
+        ],
+        operations: [
+          { id: 'mix', type: 'prep', action: 'Mix', ingredients: ['flour'], depends: [], equipment: [], time: { min: 300 }, activeTime: { min: 300 }, scalable: true },
+        ],
+      });
+      postProcessRaw(raw, makeExtraction({ contentMarkdown: '1 tablespoon brown sugar (optional)' }));
+      const ings = raw['ingredients'] as Array<Record<string, unknown>>;
+      expect(ings).toHaveLength(2);
+      expect(ings.map((i) => i['id'])).toContain('brown-sugar');
+    });
+
     it('removes equipment not referenced by any operation', () => {
       const raw = makeRawRecipe({
         equipment: [
@@ -465,6 +493,32 @@ describe('postProcessRaw', () => {
       const meta = raw['meta'] as Record<string, unknown>;
       const totalTime = meta['totalTime'] as { relaxed: { min: number } };
       expect(totalTime.relaxed.min).toBe(120);
+    });
+
+    it('differentiates relaxed (max) from optimized (min) when time ranges exist', () => {
+      const raw = makeRawRecipe({
+        operations: [
+          { id: 'step-a', type: 'prep', action: 'A', ingredients: [], depends: [], equipment: [], time: { min: 300, max: 600 }, activeTime: { min: 300 }, scalable: true },
+          { id: 'step-b', type: 'cook', action: 'B', ingredients: [], depends: ['step-a'], equipment: [], time: { min: 600, max: 900 }, activeTime: { min: 60 }, scalable: false },
+        ],
+      });
+      postProcessRaw(raw, makeExtraction());
+      const meta = raw['meta'] as Record<string, unknown>;
+      const totalTime = meta['totalTime'] as { relaxed: { min: number }; optimized: { min: number } };
+      expect(totalTime.optimized.min).toBe(900);  // 300 + 600
+      expect(totalTime.relaxed.min).toBe(1500);   // 600 + 900
+    });
+
+    it('relaxed falls back to optimized when no time.max exists', () => {
+      const raw = makeRawRecipe({
+        operations: [
+          { id: 'step-a', type: 'prep', action: 'A', ingredients: [], depends: [], equipment: [], time: { min: 300 }, activeTime: { min: 300 }, scalable: true },
+        ],
+      });
+      postProcessRaw(raw, makeExtraction());
+      const meta = raw['meta'] as Record<string, unknown>;
+      const totalTime = meta['totalTime'] as { relaxed: { min: number }; optimized: { min: number } };
+      expect(totalTime.relaxed.min).toBe(totalTime.optimized.min);
     });
   });
 
@@ -574,6 +628,22 @@ describe('postProcessRaw', () => {
       const ings = raw['ingredients'] as Array<Record<string, unknown>>;
       expect((ings[0]!['quantity'] as { min: number }).min).toBe(1);
       expect((ings[1]!['quantity'] as { min: number }).min).toBe(1);
+    });
+
+    it('does not crash on ingredients without quantity (garnish)', () => {
+      const raw = makeRawRecipe({
+        ingredients: [
+          { id: 'flour', name: 'Flour', quantity: { min: 200, unit: 'g' }, group: 'pantry' },
+          { id: 'parsley', name: 'parsley', group: 'vegetables' },
+        ],
+        operations: [
+          { id: 'mix', type: 'prep', action: 'Mix', ingredients: ['flour', 'parsley'], depends: [], equipment: [], time: { min: 60 }, activeTime: { min: 60 }, scalable: true },
+        ],
+      });
+      postProcessRaw(raw, makeExtraction());
+      const ings = raw['ingredients'] as Array<Record<string, unknown>>;
+      const parsley = ings.find((i) => i['id'] === 'parsley')!;
+      expect(parsley['quantity']).toBeUndefined();
     });
   });
 
@@ -934,6 +1004,35 @@ describe('postProcessRaw', () => {
       const temp = op['temperature'] as { min: number; max: number; unit: string };
       expect(temp.min).toBe(160);
       expect(temp.max).toBe(180);
+    });
+  });
+
+  // --- Fix 22: Strip empty details strings ---
+  describe('empty details stripping', () => {
+    it('removes empty-string details from operations', () => {
+      const raw = makeRawRecipe({
+        operations: [
+          { id: 'step-a', type: 'prep', action: 'dice', ingredients: ['flour'], depends: [], equipment: [],
+            time: { min: 180 }, activeTime: { min: 180 }, scalable: true,
+            details: '' },
+        ],
+      });
+      postProcessRaw(raw, makeExtraction());
+      const op = (raw['operations'] as Array<Record<string, unknown>>)[0]!;
+      expect(op['details']).toBeUndefined();
+    });
+
+    it('preserves non-empty details', () => {
+      const raw = makeRawRecipe({
+        operations: [
+          { id: 'step-a', type: 'prep', action: 'dice', ingredients: ['flour'], depends: [], equipment: [],
+            time: { min: 180 }, activeTime: { min: 180 }, scalable: true,
+            details: 'Finely dice the onion' },
+        ],
+      });
+      postProcessRaw(raw, makeExtraction());
+      const op = (raw['operations'] as Array<Record<string, unknown>>)[0]!;
+      expect(op['details']).toBe('Finely dice the onion');
     });
   });
 });

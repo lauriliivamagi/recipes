@@ -38,6 +38,7 @@ ${JSON.stringify(tagsJson, null, 2)}
 8. **Identify sub-products.** When a recipe has named intermediate results (sauce, dough, filling), add a \`subProducts\` entry. Set \`subProduct\` on **every** operation that contributes to that intermediate result (not just the final one). Set \`output\` only on the single operation that produces the finished sub-product.
 9. **Use \`rest\` for passive waiting without heat.** Resting meat, proofing dough, marinating, cooling, chilling.
 10. **Use \`assemble\` for terminal/combining actions.** Plating, tossing, garnishing, serving.
+11. **Wire every ingredient into at least one operation.** Each ingredient in the \`ingredients\` array must appear in at least one operation's \`ingredients\` list. Garnish and finishing ingredients (parsley, cheese, sesame seeds) belong in \`assemble\`-type operations. Optional ingredients used during cooking (e.g., brown sugar added to the pot) belong in the relevant \`cook\` operation.
 
 ## Auto-derived fields (do NOT generate these — post-processing handles them)
 
@@ -80,6 +81,7 @@ Schema.org does NOT give you: DAG edges, active vs passive time, equipment occup
 - \`quantity\` is a nested object: \`{"min": number, "max"?: number, "unit": string}\`. Example: \`{"id": "flour", "name": "flour", "quantity": {"min": 250, "unit": "g"}, "group": "dry"}\`
 - For quantity ranges: add \`max\` inside the quantity object. Example: \`{"id": "cheese", "name": "cheese", "quantity": {"min": 100, "max": 150, "unit": "g"}, "group": "dairy"}\`
 - For ingredient alternatives: add optional \`alternatives\` array with full ingredient objects. Example: \`{"id": "fat", "name": "cream", "quantity": {"min": 200, "unit": "ml"}, "group": "dairy", "alternatives": [{"id": "fat-alt", "name": "water", "quantity": {"min": 200, "unit": "ml"}, "group": "pantry"}]}\`
+- When an ingredient has no measurable quantity (e.g., "for garnish", "to taste", "as needed"), **omit the \`quantity\` field entirely**. Do NOT invent a quantity.
 
 ### Operations
 - Break compound instructions into atomic operations
@@ -99,6 +101,12 @@ Schema.org does NOT give you: DAG edges, active vs passive time, equipment occup
 - \`easy\`: few ingredients, simple techniques, forgiving timing
 - \`medium\`: multiple components, some technique, timing matters
 - \`hard\`: advanced techniques, precise timing, many parallel tasks
+
+### Field Completeness
+- **\`details\`** (operations): Always include \`details\` with 1-2 sentences of practical cooking guidance — visual cues, doneness indicators, technique tips. Example: \`"Sauté until onions are translucent and edges begin to caramelize, about 5-7 minutes"\`.
+- **\`temperature\`** (operations): Include whenever a specific temperature is mentioned or can be reasonably inferred. For stovetop heat descriptions, post-processing will inject a fallback, but explicit is better.
+- **\`notes\`** (meta): Include recipe-level tips, substitution suggestions, or serving ideas if the source text has them.
+- **\`subProduct\`** / **\`output\`**: Use these when the recipe produces named intermediate products. Set \`subProduct\` on every contributing operation, \`output\` only on the final one.
 
 ### Output Completeness
 - Produce the FULL JSON object in a single response — do not stop early

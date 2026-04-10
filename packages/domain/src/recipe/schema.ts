@@ -55,7 +55,7 @@ const quantitySchema = z.object({
 const ingredientBaseFields = {
   id: ingredientIdSchema.describe('Unique identifier for this ingredient, referenced by operations'),
   name: z.string().min(1).describe('Human-readable ingredient name'),
-  quantity: quantitySchema.describe('Amount with unit, optionally a range'),
+  quantity: quantitySchema.optional().describe('Amount with unit, optionally a range. Omit for "to taste" / garnish ingredients.'),
   group: z.string().min(1).describe('Category for shopping list aggregation (e.g., vegetables, meat, dairy)'),
 };
 

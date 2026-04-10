@@ -22,7 +22,7 @@ chrome.runtime.onMessage.addListener(
           title: result.title ?? document.title,
           contentMarkdown: result.contentMarkdown ?? result.content ?? '',
           schemaOrgData: result.schemaOrgData ?? null,
-          language: result.language ?? document.documentElement.lang ?? 'en',
+          language: result.language || document.documentElement.lang || 'en',
         },
       };
 
@@ -35,7 +35,7 @@ chrome.runtime.onMessage.addListener(
           title: document.title,
           contentMarkdown: document.body.innerText.slice(0, 15_000),
           schemaOrgData: null,
-          language: document.documentElement.lang ?? 'en',
+          language: document.documentElement.lang || 'en',
         },
       });
     }

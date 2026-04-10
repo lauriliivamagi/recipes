@@ -50,7 +50,7 @@ export interface RecipeMeta {
 export interface IngredientBase {
   id: IngredientId;
   name: string;
-  quantity: Quantity;
+  quantity?: Quantity;
   group: string;
 }
 

@@ -47,7 +47,7 @@
           },
           "group": { "type": "string" }
         },
-        "required": ["id", "name", "quantity", "group"]
+        "required": ["id", "name", "group"]
       }
     },
     "equipment": {
@@ -103,7 +103,7 @@
           "subProduct": { "type": "string" },
           "output": { "type": "string" }
         },
-        "required": ["id", "type", "action", "ingredients", "depends", "equipment", "time", "activeTime", "scalable"]
+        "required": ["id", "type", "action", "ingredients", "depends", "equipment", "time", "activeTime", "scalable", "details"]
       }
     },
     "subProducts": {

@@ -347,8 +347,10 @@ export function postProcessRaw(raw: Record<string, unknown>, extraction: Extract
   const equipment = raw['equipment'] as Array<Record<string, unknown>> | undefined;
 
   // 1. Override meta.language from extraction (LLM often guesses wrong)
+  //    Normalize BCP 47 tags (e.g. "en-US") to ISO 639-1 two-letter codes ("en")
   if (meta) {
-    meta['language'] = extraction.language;
+    const raw = extraction.language;
+    meta['language'] = raw.length >= 2 ? raw.slice(0, 2).toLowerCase() : raw;
   }
 
   // 2. Override meta.source from extraction URL
@@ -402,7 +404,9 @@ export function postProcessRaw(raw: Record<string, unknown>, extraction: Extract
     }
   }
 
-  // 6. Remove orphan ingredients/equipment not referenced by any operation
+  // 6. Remove orphan ingredients/equipment not referenced by any operation.
+  //    Keep unreferenced ingredients when their name appears in the original text
+  //    (real but unwired by the LLM, e.g. optional garnishes).
   if (Array.isArray(operations)) {
     const usedIngredientIds = new Set<string>();
     const usedEquipmentIds = new Set<string>();
@@ -415,7 +419,13 @@ export function postProcessRaw(raw: Record<string, unknown>, extraction: Extract
 
     const currentIngs = raw['ingredients'] as Array<Record<string, unknown>> | undefined;
     if (Array.isArray(currentIngs)) {
-      raw['ingredients'] = currentIngs.filter((ing) => usedIngredientIds.has(ing['id'] as string));
+      const originalText = (extraction.contentMarkdown ?? '').toLowerCase();
+      raw['ingredients'] = currentIngs.filter((ing) => {
+        if (usedIngredientIds.has(ing['id'] as string)) return true;
+        // Keep unreferenced ingredient if its name appears in the original text
+        const name = (ing['name'] as string ?? '').toLowerCase();
+        return name.length > 0 && originalText.includes(name);
+      });
     }
 
     if (Array.isArray(equipment)) {
@@ -444,13 +454,14 @@ export function postProcessRaw(raw: Record<string, unknown>, extraction: Extract
   }
 
   // 9. Recalculate meta.totalTime from the operation DAG critical path
-  // TODO: compute optimized separately (prep done during idle windows) vs relaxed (all sequential)
+  // Relaxed uses time.max (upper bound), optimized uses time.min (lower bound)
   if (meta && Array.isArray(operations) && operations.length > 0) {
-    const totalTime = computeCriticalPathTime(operations);
-    if (totalTime > 0) {
+    const optimizedTime = computeCriticalPathTime(operations, false);
+    const relaxedTime = computeCriticalPathTime(operations, true);
+    if (optimizedTime > 0 || relaxedTime > 0) {
       meta['totalTime'] = {
-        relaxed: { min: totalTime },
-        optimized: { min: totalTime },
+        relaxed: { min: relaxedTime || optimizedTime },
+        optimized: { min: optimizedTime || relaxedTime },
       };
     }
   }
@@ -648,6 +659,15 @@ export function postProcessRaw(raw: Record<string, unknown>, extraction: Extract
       }
     }
   }
+
+  // 22. Strip empty details strings (from skeleton schema forcing the field)
+  if (Array.isArray(operations)) {
+    for (const op of operations) {
+      if (op['details'] === '') {
+        delete op['details'];
+      }
+    }
+  }
 }
 
 /**
@@ -704,9 +724,10 @@ export function parseTimeFromText(text: string): { min: number; max?: number } |
  * Compute the critical path duration (in seconds) from raw operation data.
  * Uses longest-path through the DAG via topological order.
  */
-function computeCriticalPathTime(operations: Array<Record<string, unknown>>): number {
+function computeCriticalPathTime(operations: Array<Record<string, unknown>>, useMax = false): number {
   const timeOf = (op: Record<string, unknown>): number => {
     const t = op['time'] as Record<string, number> | undefined;
+    if (useMax) return t?.['max'] ?? t?.['min'] ?? 0;
     return t?.['min'] ?? 0;
   };
 
