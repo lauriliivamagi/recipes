@@ -5,7 +5,7 @@ test.describe('PWA', () => {
     const response = await page.goto('/manifest.webmanifest');
     expect(response?.status()).toBe(200);
     const manifest = await response?.json();
-    expect(manifest.name).toBe('Recipe Visualizer');
+    expect(manifest.name).toBe('Hob');
     expect(manifest.display).toBe('standalone');
     expect(manifest.icons).toBeDefined();
   });

@@ -1,4 +1,4 @@
-# Recipe Visualizer
+# Hob
 
 ![Build](https://github.com/lauriliivamagi/recipes/actions/workflows/deploy.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-22%2B-brightgreen)

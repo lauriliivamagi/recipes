@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'recipe-visualizer';
+const STORAGE_KEY = 'hob';
 
 interface PersistedState {
   lastRecipeSlug?: string;

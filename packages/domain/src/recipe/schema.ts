@@ -162,7 +162,7 @@ export function createRecipeSchema(config: RecipeSchemaConfig) {
     equipment: z.array(equipmentSchema).describe('Equipment needed for this recipe'),
     operations: z.array(operationSchema).min(1).describe('Ordered operations forming the recipe DAG'),
     subProducts: z.array(subProductSchema).describe('Intermediate products created during cooking'),
-  }).strict().describe('Structured recipe data model for the Recipe Visualization App')
+  }).strict().describe('Structured recipe data model for Hob')
     .superRefine((recipe, ctx) => {
       const operations = recipe.operations ?? [];
       const equipment = recipe.equipment ?? [];

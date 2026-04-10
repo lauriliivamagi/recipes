@@ -23,8 +23,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: null, // We import virtual:pwa-register in entry modules
       manifest: {
-        name: "Recipe Visualizer",
-        short_name: "Recipes",
+        name: "Hob",
+        short_name: "Hob",
         description: "Step-by-step cooking with timers and parallel task management",
         start_url: "./",
         scope: "./",

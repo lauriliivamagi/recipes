@@ -516,7 +516,7 @@ describe('z.toJSONSchema generation', () => {
     expect(jsonSchema.properties).toHaveProperty('meta');
     expect(jsonSchema.properties).toHaveProperty('ingredients');
     expect(jsonSchema.properties).toHaveProperty('operations');
-    expect(jsonSchema.description).toBe('Structured recipe data model for the Recipe Visualization App');
+    expect(jsonSchema.description).toBe('Structured recipe data model for Hob');
   });
 
   it('preserves field descriptions in generated schema', () => {
