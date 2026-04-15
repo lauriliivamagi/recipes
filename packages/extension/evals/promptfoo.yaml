@@ -39,6 +39,15 @@ providers:
       passthrough:
         format: file://../../build/config/recipe-skeleton-schema.json
 
+  - id: ollama:chat:glm-5.1:cloud
+    label: 'GLM 5.1 (Ollama Cloud, single)'
+    config:
+      temperature: 0.6
+      num_predict: 8192
+      think: false
+      passthrough:
+        format: file://../../build/config/recipe-skeleton-schema.json
+
   # With retry loop (mirrors extension behavior — up to 3 attempts with error feedback)
   - id: file://retry-provider.mjs
     label: 'Gemini 2.5 Flash (3 retries)'
@@ -76,6 +85,18 @@ providers:
       provider: ollama:chat:gemma4:31b-cloud
       providerConfig:
         temperature: 1
+        num_predict: 8192
+        think: false
+        passthrough:
+          format: file://../../build/config/recipe-skeleton-schema.json
+      maxRetries: 3
+
+  - id: file://retry-provider.mjs
+    label: 'GLM 5.1 Ollama Cloud (3 retries)'
+    config:
+      provider: ollama:chat:glm-5.1:cloud
+      providerConfig:
+        temperature: 0.6
         num_predict: 8192
         think: false
         passthrough:

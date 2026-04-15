@@ -33,9 +33,11 @@ export const AVAILABLE_MODELS: Record<LLMProvider, ModelInfo[]> = {
   ollama: [
     { id: "gemma4:e4b", name: "Gemma 4 E4B", contextWindow: 128_000 },
     { id: "gpt-oss:20b", name: "GPT OSS 20B", contextWindow: 128_000 },
-    { id: "gemma3:12b", name: "Gemma 3 12B", contextWindow: 128_000 },
   ],
-  "ollama-cloud": [{ id: "gemma4:31b-cloud", name: "Gemma 4 31B", contextWindow: 128_000 }],
+  "ollama-cloud": [
+    { id: "glm-5.1:cloud", name: "GLM 5.1", contextWindow: 128_000 },
+    { id: "gemma4:31b-cloud", name: "Gemma 4 31B", contextWindow: 128_000 },
+  ],
 };
 
 /** Default model per provider */
@@ -117,6 +119,11 @@ function isGemma4(modelId: string): boolean {
   return modelId.startsWith("gemma4:");
 }
 
+/** Whether a model ID is a GLM 5.1 variant */
+function isGlm51(modelId: string): boolean {
+  return modelId.startsWith("glm-5.1");
+}
+
 /**
  * Get the full generation config for a provider + model combination.
  *
@@ -124,6 +131,9 @@ function isGemma4(modelId: string): boolean {
  * - Ollama/Ollama Cloud: think=false, num_predict=8192. JSON constrained decoding
  *   is handled by generateObject (sets format:<schema> via the AI SDK internally).
  * - Gemma 4: temperature=1.0, topP=0.95, topK=64 (per model card)
+ * - GLM 5.1: temperature=0.6 (lower end of Z.ai's "technical task" range, favors
+ *   determinism for structured JSON extraction). topP left unset per Z.ai guidance
+ *   to tune temperature OR topP, not both.
  * - Other providers: temperature=0, maxOutputTokens=16384
  */
 export function getGenerationConfig(provider: LLMProvider, modelId: string): GenerationConfig {
@@ -138,6 +148,10 @@ export function getGenerationConfig(provider: LLMProvider, modelId: string): Gen
   if (isGemma4(modelId)) {
     base.temperature = 1.0;
     base.topP = 0.95;
+  }
+
+  if (isGlm51(modelId)) {
+    base.temperature = 0.6;
   }
 
   // Ollama providers: constrained JSON decoding + disable thinking + limit output

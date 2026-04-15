@@ -27,9 +27,9 @@ const AVAILABLE_MODELS: Record<LLMProvider, Array<{ id: string; name: string }>>
   ollama: [
     { id: 'gemma4:e4b', name: 'Gemma 4 E4B' },
     { id: 'gpt-oss:20b', name: 'GPT OSS 20B' },
-    { id: 'gemma3:12b', name: 'Gemma 3 12B' },
   ],
   'ollama-cloud': [
+    { id: 'glm-5.1:cloud', name: 'GLM 5.1' },
     { id: 'gemma4:31b-cloud', name: 'Gemma 4 31B' },
   ],
 };
