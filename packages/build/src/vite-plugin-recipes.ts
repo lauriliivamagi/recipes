@@ -175,21 +175,15 @@ export function recipesPlugin(): Plugin {
     });
   }
 
-  function renderRecipe(data: RecipeData, depth: number, entryScript: string): string {
-    const template = readFileSync(join(templatesDir, 'recipe.html'), 'utf8');
-    const prefix = depth === 0 ? './' : '../'.repeat(depth);
+  function renderPdsRecipe(entryScript: string): string {
+    const template = readFileSync(join(templatesDir, 'pds-recipe.html'), 'utf8');
+    const i18n = loadI18n('en', i18nDir);
     return applyTemplate(template, {
-      TITLE: data.recipe.meta.title,
-      DESCRIPTION: `${data.recipe.meta.title} — step-by-step recipe with timers`,
-      RECIPE_JSON: JSON.stringify(data.recipe),
-      I18N_JSON: JSON.stringify(data.i18n),
-      SCHEDULE_RELAXED_JSON: JSON.stringify(data.relaxed),
-      SCHEDULE_OPTIMIZED_JSON: JSON.stringify(data.optimized),
-      VERSION: appVersion,
-      MANIFEST_PATH: `${prefix}manifest.webmanifest`,
-      SW_PATH: `${prefix}sw.js`,
-      ICON_PATH: `${prefix}icon-512.png`,
-      FAVICON_PATH: `${prefix}icon.svg`,
+      I18N_JSON: JSON.stringify(i18n),
+      MANIFEST_PATH: '../manifest.webmanifest',
+      SW_PATH: '../sw.js',
+      ICON_PATH: '../icon-512.png',
+      FAVICON_PATH: '../icon.svg',
       ENTRY_SCRIPT: entryScript,
     });
   }
@@ -203,7 +197,7 @@ export function recipesPlugin(): Plugin {
           rollupOptions: {
             input: {
               catalog: resolve('packages/ui/entries/catalog.ts'),
-              recipe: resolve('packages/ui/entries/recipe.ts'),
+              'pds-recipe': resolve('packages/ui/entries/pds-recipe.ts'),
               'auth-callback': resolve('packages/ui/entries/auth-callback.ts'),
             },
           },
@@ -287,12 +281,10 @@ export function recipesPlugin(): Plugin {
             return;
           }
 
-          // Serve recipe pages
-          const recipeData = recipeDataMap.get(stripped);
-          if (recipeData) {
-            const depth = stripped.split('/').length - 1;
-            const entryScript = '<script type="module" src="/packages/ui/entries/recipe.ts"></script>';
-            const html = renderRecipe(recipeData, depth, entryScript);
+          // Serve runtime PDS recipe page
+          if (stripped === 'r' || stripped === 'r/' || stripped === 'r/index.html') {
+            const entryScript = '<script type="module" src="/packages/ui/entries/pds-recipe.ts"></script>';
+            const html = renderPdsRecipe(entryScript);
             server
               .transformIndexHtml(reqUrl, html)
               .then((transformed) => {
@@ -323,12 +315,12 @@ export function recipesPlugin(): Plugin {
     generateBundle(_, bundle) {
       // Find the bundled entry point file names
       let catalogJs = '';
-      let recipeJs = '';
+      let pdsRecipeJs = '';
       let authCallbackJs = '';
       for (const [fileName, chunk] of Object.entries(bundle)) {
         if (chunk.type === 'chunk' && chunk.isEntry) {
           if (chunk.name === 'catalog') catalogJs = fileName;
-          if (chunk.name === 'recipe') recipeJs = fileName;
+          if (chunk.name === 'pds-recipe') pdsRecipeJs = fileName;
           if (chunk.name === 'auth-callback') authCallbackJs = fileName;
         }
       }
@@ -342,15 +334,13 @@ export function recipesPlugin(): Plugin {
         source: indexHtml,
       });
 
-      // Generate recipe HTML files with production bundle path
-      for (const [url, data] of recipeDataMap) {
-        const depth = url.split('/').length - 1;
-        const prefix = depth === 0 ? './' : '../'.repeat(depth);
-        const recipeScript = `<script type="module" src="${prefix}${recipeJs}"></script>`;
-        const html = renderRecipe(data, depth, recipeScript);
+      // Generate runtime PDS recipe shell page
+      if (pdsRecipeJs) {
+        const recipeScript = `<script type="module" src="../${pdsRecipeJs}"></script>`;
+        const html = renderPdsRecipe(recipeScript);
         this.emitFile({
           type: 'asset',
-          fileName: url,
+          fileName: 'r/index.html',
           source: html,
         });
       }

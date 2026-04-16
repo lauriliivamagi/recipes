@@ -1,8 +1,8 @@
-import { LitElement, html, css } from 'lit';
-import { customElement } from 'lit/decorators.js';
+import { LitElement, html, css, type PropertyValues } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
 import { cache } from 'lit/directives/cache.js';
-import { createActor } from 'xstate';
+import { createActor, type Actor } from 'xstate';
 import { ContextProvider } from '@lit/context';
 import { recipeMachine } from '../state/recipe-machine.js';
 import type { RecipeContext } from '../state/recipe-machine.js';
@@ -19,13 +19,6 @@ import './view-tabs.js';
 import '../overview/overview-view.js';
 import '../cooking/cooking-view.js';
 import '../auth/hob-atproto-publish.js';
-
-interface WindowGlobals {
-  RECIPE: Recipe;
-  I18N: Record<string, any>;
-  SCHEDULE_RELAXED: Phase[];
-  SCHEDULE_OPTIMIZED: Phase[];
-}
 
 @customElement('recipe-page')
 export class RecipePage extends LitElement {
@@ -52,39 +45,37 @@ export class RecipePage extends LitElement {
     `,
   ];
 
-  private _ctrl!: ActorController<typeof recipeMachine>;
+  @property({ attribute: false }) recipe!: Recipe;
+  @property({ attribute: false }) scheduleRelaxed: Phase[] = [];
+  @property({ attribute: false }) scheduleOptimized: Phase[] = [];
+  @property({ attribute: false }) i18n: Record<string, any> = {};
+
+  private _ctrl?: ActorController<typeof recipeMachine>;
+  private _actor?: Actor<typeof recipeMachine>;
   private _i18nProvider = new ContextProvider(this, { context: i18nContext, initialValue: {} });
   private _scaleFactorProvider = new ContextProvider(this, { context: scaleFactorContext, initialValue: 1 });
-  private _machineProvider!: ContextProvider<typeof recipeMachineContext>;
 
-  private get _recipe(): Recipe | null {
-    return (window as unknown as WindowGlobals).RECIPE ?? null;
+  override willUpdate(changed: PropertyValues<this>): void {
+    if (changed.has('i18n')) {
+      this._i18nProvider.setValue(this.i18n);
+    }
+    if (
+      this.recipe &&
+      !this._actor &&
+      (changed.has('recipe') || changed.has('scheduleRelaxed') || changed.has('scheduleOptimized'))
+    ) {
+      this._startMachine();
+    }
   }
 
-  private get _i18n(): Record<string, any> {
-    return (window as unknown as WindowGlobals).I18N ?? {};
-  }
-
-  private get _scheduleRelaxed(): Phase[] {
-    return (window as unknown as WindowGlobals).SCHEDULE_RELAXED ?? [];
-  }
-
-  private get _scheduleOptimized(): Phase[] {
-    return (window as unknown as WindowGlobals).SCHEDULE_OPTIMIZED ?? [];
-  }
-
-  override connectedCallback() {
-    super.connectedCallback();
-
-    const recipe = this._recipe;
-    if (!recipe) return;
-
+  private _startMachine(): void {
+    const recipe = this.recipe;
     const persisted = loadState();
     const slug = recipe.meta.slug;
     const savedServings = persisted.servings?.[slug];
     const savedStep = persisted.currentStep?.[slug];
 
-    const totalSteps = this._scheduleRelaxed.reduce(
+    const totalSteps = this.scheduleRelaxed.reduce(
       (sum, phase) => sum + phase.operations.length,
       0,
     );
@@ -93,8 +84,8 @@ export class RecipePage extends LitElement {
       input: {
         recipe,
         scheduleModes: {
-          relaxed: this._scheduleRelaxed,
-          optimized: this._scheduleOptimized,
+          relaxed: this.scheduleRelaxed,
+          optimized: this.scheduleOptimized,
         },
         mode: persisted.mode ?? 'relaxed' as ScheduleMode,
         servings: savedServings ?? recipe.meta.servings,
@@ -104,17 +95,16 @@ export class RecipePage extends LitElement {
       },
     });
 
+    this._actor = actor;
     this._ctrl = new ActorController(this, actor);
-    this._i18nProvider.setValue(this._i18n);
 
-    // Provide actor ref via context so child components can access it directly
-    this._machineProvider = new ContextProvider(this, {
+    // ContextProvider auto-registers on `this` — no ref needed to keep alive.
+    new ContextProvider(this, {
       context: recipeMachineContext,
       initialValue: actor,
     });
 
-    // Update scale factor on every snapshot change
-    actor.subscribe(snapshot => {
+    actor.subscribe((snapshot) => {
       const ctx = snapshot.context;
       this._scaleFactorProvider.setValue(ctx.servings / ctx.originalServings);
     });
@@ -124,37 +114,45 @@ export class RecipePage extends LitElement {
 
   override disconnectedCallback() {
     super.disconnectedCallback();
-    this._ctrl?.actorRef?.stop();
+    this._actor?.stop();
   }
 
   // -- Event handlers (thin: just forward to machine) ----------------------
 
   private _onAdjustServings(e: CustomEvent<{ delta: number }>) {
-    this._ctrl.send({ type: 'ADJUST_SERVINGS', delta: e.detail.delta });
+    this._ctrl?.send({ type: 'ADJUST_SERVINGS', delta: e.detail.delta });
   }
 
   private _onSwitchView(e: CustomEvent<{ view: 'overview' | 'cooking' }>) {
-    animatedSend(this._ctrl.actorRef, { type: 'SWITCH_VIEW', view: e.detail.view });
+    if (this._ctrl) {
+      animatedSend(this._ctrl.actorRef, { type: 'SWITCH_VIEW', view: e.detail.view });
+    }
   }
 
   private _onSetMode(e: CustomEvent<{ mode: ScheduleMode }>) {
-    animatedSend(this._ctrl.actorRef, { type: 'SET_MODE', mode: e.detail.mode });
+    if (this._ctrl) {
+      animatedSend(this._ctrl.actorRef, { type: 'SET_MODE', mode: e.detail.mode });
+    }
   }
 
   private _onNextStep() {
-    animatedSend(this._ctrl.actorRef, { type: 'NEXT_STEP' });
+    if (this._ctrl) {
+      animatedSend(this._ctrl.actorRef, { type: 'NEXT_STEP' });
+    }
   }
 
   private _onPrevStep() {
-    animatedSend(this._ctrl.actorRef, { type: 'PREV_STEP' });
+    if (this._ctrl) {
+      animatedSend(this._ctrl.actorRef, { type: 'PREV_STEP' });
+    }
   }
 
   private _onStartTimer(e: CustomEvent<{ opId: string; seconds: number }>) {
-    this._ctrl.send({ type: 'START_TIMER', opId: e.detail.opId, seconds: e.detail.seconds });
+    this._ctrl?.send({ type: 'START_TIMER', opId: e.detail.opId, seconds: e.detail.seconds });
   }
 
   private _onCancelTimer(e: CustomEvent<{ opId: string }>) {
-    this._ctrl.send({ type: 'CANCEL_TIMER', opId: e.detail.opId });
+    this._ctrl?.send({ type: 'CANCEL_TIMER', opId: e.detail.opId });
   }
 
   // -- Derived data --------------------------------------------------------
@@ -176,13 +174,13 @@ export class RecipePage extends LitElement {
   }
 
   private _getActiveView(): 'overview' | 'cooking' {
-    return this._ctrl.matches({ view: 'cooking' }) ? 'cooking' : 'overview';
+    return this._ctrl?.matches({ view: 'cooking' }) ? 'cooking' : 'overview';
   }
 
   // -- Render --------------------------------------------------------------
 
   override render() {
-    if (!this._ctrl?.snapshot || !this._recipe) {
+    if (!this._ctrl?.snapshot || !this.recipe) {
       return html`<div class="loading-placeholder">Loading recipe...</div>`;
     }
 
@@ -202,7 +200,7 @@ export class RecipePage extends LitElement {
 
       <servings-adjuster
         .servings=${ctx.servings}
-        .label=${this._i18n.servings ?? 'Servings'}
+        .label=${this.i18n.servings ?? 'Servings'}
         @adjust-servings=${this._onAdjustServings}
       ></servings-adjuster>
 
@@ -212,8 +210,8 @@ export class RecipePage extends LitElement {
 
       <view-tabs
         .activeView=${activeView}
-        .overviewLabel=${this._i18n.overview ?? 'Overview'}
-        .cookingLabel=${this._i18n.cooking ?? 'Cooking'}
+        .overviewLabel=${this.i18n.overview ?? 'Overview'}
+        .cookingLabel=${this.i18n.cooking ?? 'Cooking'}
         @switch-view=${this._onSwitchView}
       ></view-tabs>
 
@@ -224,7 +222,7 @@ export class RecipePage extends LitElement {
               .phases=${phases}
               .equipment=${ctx.recipe.equipment}
               .mode=${ctx.mode}
-              .i18n=${this._i18n}
+              .i18n=${this.i18n}
               @set-mode=${this._onSetMode}
             ></overview-view>
           `,
@@ -233,7 +231,7 @@ export class RecipePage extends LitElement {
               .phases=${phases}
               .currentStep=${ctx.currentStep}
               .recipe=${ctx.recipe}
-              .i18n=${this._i18n}
+              .i18n=${this.i18n}
               .activeTimers=${this._buildTimerPills(ctx)}
               @next-step=${this._onNextStep}
               @prev-step=${this._onPrevStep}

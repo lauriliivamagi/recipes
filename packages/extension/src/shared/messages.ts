@@ -1,4 +1,4 @@
-import type { AISettings, StoredRecipe } from './types.js';
+import type { AISettings, AtprotoSession, StoredRecipe } from './types.js';
 
 // --- Content script messages ---
 
@@ -56,6 +56,24 @@ export interface SaveAtprotoRkeyRequest {
   rkey: string;
 }
 
+export interface PublishRecipeRequest {
+  type: 'PUBLISH_RECIPE';
+  slug: string;
+}
+
+export interface SaveAtprotoSessionRequest {
+  type: 'SAVE_ATPROTO_SESSION';
+  session: AtprotoSession;
+}
+
+export interface GetAtprotoSessionRequest {
+  type: 'GET_ATPROTO_SESSION';
+}
+
+export interface ClearAtprotoSessionRequest {
+  type: 'CLEAR_ATPROTO_SESSION';
+}
+
 // --- Service worker → Popup responses ---
 
 export type ImportStatus =
@@ -77,6 +95,15 @@ export interface SettingsResponse {
   settings: AISettings;
 }
 
+export interface AtprotoSessionResponse {
+  type: 'ATPROTO_SESSION_RESULT';
+  session: AtprotoSession | null;
+}
+
+export type PublishRecipeResponse =
+  | { type: 'PUBLISH_RECIPE_RESULT'; success: true; uri: string; rkey: string }
+  | { type: 'PUBLISH_RECIPE_RESULT'; success: false; error: string };
+
 // --- Union types ---
 
 export type ServiceWorkerMessage =
@@ -87,6 +114,10 @@ export type ServiceWorkerMessage =
   | GetSettingsRequest
   | SaveSettingsRequest
   | GetLastStatusRequest
-  | SaveAtprotoRkeyRequest;
+  | SaveAtprotoRkeyRequest
+  | PublishRecipeRequest
+  | SaveAtprotoSessionRequest
+  | GetAtprotoSessionRequest
+  | ClearAtprotoSessionRequest;
 
 export type ContentScriptMessage = ExtractRequest;

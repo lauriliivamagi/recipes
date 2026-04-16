@@ -1,8 +1,5 @@
-import '@recipe/ui/recipe/recipe-page.js';
+import '@recipe/ui/recipe/pds-recipe-shell.js';
 import { registerSW } from 'virtual:pwa-register';
-
-// Recipe data is injected by the Vite plugin into the HTML as script globals
-// Components read from window.RECIPE, window.SCHEDULE_RELAXED, etc.
 
 registerSW({
   immediate: true,

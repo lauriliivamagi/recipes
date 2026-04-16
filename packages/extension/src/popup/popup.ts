@@ -3,8 +3,9 @@
  * Plain TS, no framework.
  */
 
-import type { AISettings, LLMProvider, StoredRecipe } from '../shared/types.js';
-import type { ImportStatus } from '../shared/messages.js';
+import { loginWithAppPassword } from '@recipe/atproto';
+import type { AISettings, AtprotoSession, LLMProvider, StoredRecipe } from '../shared/types.js';
+import type { ImportStatus, PublishRecipeResponse, AtprotoSessionResponse } from '../shared/messages.js';
 
 // Model registry (duplicated from ai-provider to avoid bundling AI SDK in popup)
 const AVAILABLE_MODELS: Record<LLMProvider, Array<{ id: string; name: string }>> = {
@@ -46,11 +47,24 @@ const importBtn = document.getElementById('import-btn') as HTMLButtonElement;
 const statusEl = document.getElementById('status') as HTMLDivElement;
 const recipeList = document.getElementById('recipe-list') as HTMLUListElement;
 
+// Atproto auth elements
+const atprotoSignedOut = document.getElementById('atproto-signed-out') as HTMLDivElement;
+const atprotoSignedIn = document.getElementById('atproto-signed-in') as HTMLDivElement;
+const atprotoHandleInput = document.getElementById('atproto-handle-input') as HTMLInputElement;
+const atprotoPasswordInput = document.getElementById('atproto-password-input') as HTMLInputElement;
+const atprotoServiceInput = document.getElementById('atproto-service-input') as HTMLInputElement;
+const atprotoSignInBtn = document.getElementById('atproto-signin-btn') as HTMLButtonElement;
+const atprotoSignOutBtn = document.getElementById('atproto-signout-btn') as HTMLButtonElement;
+const atprotoStatus = document.getElementById('atproto-status') as HTMLDivElement;
+const atprotoHandleDisplay = document.getElementById('atproto-handle-display') as HTMLSpanElement;
+
 let currentSettings: AISettings | null = null;
+let currentAtprotoSession: AtprotoSession | null = null;
 
 // --- Init ---
 document.addEventListener('DOMContentLoaded', async () => {
   await loadSettings();
+  await loadAtprotoSession();
   await loadRecipes();
   await restoreLastStatus();
 
@@ -58,6 +72,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   modelSelect.addEventListener('change', onModelChange);
   saveKeyBtn.addEventListener('click', onSaveKey);
   importBtn.addEventListener('click', onImport);
+  atprotoSignInBtn.addEventListener('click', onAtprotoSignIn);
+  atprotoSignOutBtn.addEventListener('click', onAtprotoSignOut);
 });
 
 // Listen for status updates from service worker
@@ -244,6 +260,7 @@ async function loadRecipes(): Promise<void> {
 }
 
 function renderRecipes(recipes: StoredRecipe[]): void {
+  lastRenderedRecipes = recipes;
   recipeList.textContent = '';
 
   if (recipes.length === 0) {
@@ -270,12 +287,26 @@ function renderRecipes(recipes: StoredRecipe[]): void {
     meta.className = 'recipe-meta';
     meta.textContent = new Date(recipe.importedAt).toLocaleDateString();
 
+    const publishMeta = document.createElement('div');
+    publishMeta.className = 'recipe-meta';
+    if (recipe.atprotoRkey) {
+      publishMeta.textContent = `at://…/${recipe.atprotoRkey}`;
+    }
+
     info.appendChild(title);
     info.appendChild(meta);
+    info.appendChild(publishMeta);
 
     // Actions
     const actions = document.createElement('div');
     actions.className = 'recipe-actions';
+
+    const publishBtn = document.createElement('button');
+    publishBtn.className = 'btn-small btn-publish';
+    publishBtn.textContent = recipe.atprotoRkey ? 'Republish' : 'Publish';
+    publishBtn.disabled = currentAtprotoSession === null;
+    publishBtn.title = currentAtprotoSession === null ? 'Sign in to Bluesky first' : '';
+    publishBtn.addEventListener('click', () => publishRecipeClick(recipe.slug, publishBtn, publishMeta));
 
     const exportBtn = document.createElement('button');
     exportBtn.className = 'btn-small';
@@ -290,6 +321,7 @@ function renderRecipes(recipes: StoredRecipe[]): void {
       await loadRecipes();
     });
 
+    actions.appendChild(publishBtn);
     actions.appendChild(exportBtn);
     actions.appendChild(deleteBtn);
 
@@ -303,4 +335,111 @@ async function exportRecipe(slug: string): Promise<void> {
   // Delegate download to the service worker — popup context is too
   // restricted for Blob downloads and can crash.
   await chrome.runtime.sendMessage({ type: 'EXPORT_RECIPE', slug });
+}
+
+// --- ATproto auth ---
+
+const DEFAULT_ATPROTO_SERVICE = 'https://bsky.social';
+
+async function loadAtprotoSession(): Promise<void> {
+  const response = (await chrome.runtime.sendMessage({
+    type: 'GET_ATPROTO_SESSION',
+  })) as AtprotoSessionResponse;
+  currentAtprotoSession = response.session;
+  renderAtprotoSection();
+}
+
+function renderAtprotoSection(): void {
+  if (currentAtprotoSession) {
+    atprotoSignedOut.hidden = true;
+    atprotoSignedIn.hidden = false;
+    atprotoHandleDisplay.textContent = `@${currentAtprotoSession.handle}`;
+  } else {
+    atprotoSignedOut.hidden = false;
+    atprotoSignedIn.hidden = true;
+  }
+}
+
+async function onAtprotoSignIn(): Promise<void> {
+  const handle = atprotoHandleInput.value.trim();
+  const password = atprotoPasswordInput.value.trim();
+  const service = atprotoServiceInput.value.trim() || DEFAULT_ATPROTO_SERVICE;
+
+  if (!handle || !password) {
+    showAtprotoStatus('error', 'Enter both handle and app password');
+    return;
+  }
+
+  atprotoSignInBtn.disabled = true;
+  showAtprotoStatus('pending', 'Signing in…');
+
+  try {
+    const { session } = await loginWithAppPassword({
+      service,
+      identifier: handle,
+      password,
+    });
+    const persisted: AtprotoSession = {
+      service: session.service,
+      did: session.did,
+      handle: session.handle,
+      accessJwt: session.accessJwt,
+      refreshJwt: session.refreshJwt,
+      active: session.active,
+    };
+    await chrome.runtime.sendMessage({
+      type: 'SAVE_ATPROTO_SESSION',
+      session: persisted,
+    });
+    currentAtprotoSession = persisted;
+    showAtprotoStatus('success', `Signed in as @${session.handle}`);
+    atprotoPasswordInput.value = '';
+    renderAtprotoSection();
+    renderRecipes(lastRenderedRecipes);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    showAtprotoStatus('error', `Sign in failed: ${msg}`);
+  } finally {
+    atprotoSignInBtn.disabled = false;
+  }
+}
+
+async function onAtprotoSignOut(): Promise<void> {
+  await chrome.runtime.sendMessage({ type: 'CLEAR_ATPROTO_SESSION' });
+  currentAtprotoSession = null;
+  renderAtprotoSection();
+  renderRecipes(lastRenderedRecipes);
+}
+
+function showAtprotoStatus(kind: 'pending' | 'success' | 'error', text: string): void {
+  atprotoStatus.className = `visible ${kind}`;
+  atprotoStatus.textContent = text;
+}
+
+// --- Publish ---
+
+let lastRenderedRecipes: StoredRecipe[] = [];
+
+async function publishRecipeClick(slug: string, btn: HTMLButtonElement, subtitle: HTMLDivElement): Promise<void> {
+  btn.disabled = true;
+  btn.textContent = 'Publishing…';
+  subtitle.textContent = '';
+  try {
+    const response = (await chrome.runtime.sendMessage({
+      type: 'PUBLISH_RECIPE',
+      slug,
+    })) as PublishRecipeResponse;
+    if (response.success) {
+      btn.textContent = 'Republish';
+      subtitle.textContent = response.uri;
+      subtitle.className = 'recipe-meta success';
+      await loadRecipes();
+    } else {
+      btn.textContent = 'Publish';
+      subtitle.textContent = response.error;
+      subtitle.className = 'recipe-meta error';
+    }
+  } finally {
+    btn.disabled = false;
+  }
 }

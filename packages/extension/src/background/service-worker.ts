@@ -10,6 +10,12 @@ import { createActor } from 'xstate';
 import { importMachine, type ImportContext, type ImportPhase } from './import-machine.js';
 import { getSettings, saveSettings } from './settings.js';
 import { getAllRecipes, getRecipe, deleteRecipe, saveAtprotoRkey } from './recipe-store.js';
+import {
+  clearAtprotoSession,
+  loadAtprotoSession,
+  saveAtprotoSession,
+} from './atproto-session.js';
+import { publishFromExtension } from './publish.js';
 import type { ServiceWorkerMessage, ImportStatus } from '../shared/messages.js';
 
 // ---------------------------------------------------------------------------
@@ -78,6 +84,18 @@ async function handleMessage(message: ServiceWorkerMessage): Promise<unknown> {
       return { success: true };
     case 'SAVE_ATPROTO_RKEY':
       await saveAtprotoRkey(message.slug, message.rkey);
+      return { success: true };
+    case 'PUBLISH_RECIPE': {
+      const result = await publishFromExtension(message.slug);
+      return { type: 'PUBLISH_RECIPE_RESULT', ...result };
+    }
+    case 'SAVE_ATPROTO_SESSION':
+      await saveAtprotoSession(message.session);
+      return { success: true };
+    case 'GET_ATPROTO_SESSION':
+      return { type: 'ATPROTO_SESSION_RESULT', session: await loadAtprotoSession() };
+    case 'CLEAR_ATPROTO_SESSION':
+      await clearAtprotoSession();
       return { success: true };
     case 'GET_LAST_STATUS': {
       const snapshot = importActor.getSnapshot();

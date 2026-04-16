@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseIsoDuration, findRecipeSchema, buildUserPrompt } from './ai-prompt.js';
+import { parseIsoDuration, buildUserPrompt } from './ai-prompt.js';
 
 describe('parseIsoDuration', () => {
   it('parses hours + minutes', () => {

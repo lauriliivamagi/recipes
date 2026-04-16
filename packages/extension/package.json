@@ -1,6 +1,6 @@
 {
   "name": "@recipe/extension",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -17,6 +17,7 @@
     "@ai-sdk/anthropic": "^3.0.67",
     "@ai-sdk/google": "^3.0.59",
     "@ai-sdk/openai": "^3.0.51",
+    "@recipe/atproto": "workspace:*",
     "@recipe/domain": "workspace:*",
     "ai": "^6.0.149",
     "defuddle": "^0.15.0",

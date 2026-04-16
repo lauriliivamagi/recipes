@@ -44,6 +44,37 @@
     </div>
   </section>
 
+  <!-- Bluesky auth (app password) -->
+  <section id="atproto-section">
+    <h2>Bluesky Account</h2>
+    <div id="atproto-signed-out">
+      <p class="help">
+        Sign in with a Bluesky app password to publish recipes to your PDS.
+        Create a dedicated password at
+        <a href="https://bsky.app/settings/app-passwords" target="_blank" rel="noopener">bsky.app &rarr; Settings &rarr; App Passwords</a>
+        and name it <strong>Hob Recipe Extension</strong> so you can revoke it independently.
+      </p>
+      <div>
+        <label for="atproto-handle-input">Handle</label>
+        <input type="text" id="atproto-handle-input" placeholder="alice.bsky.social" autocomplete="username">
+      </div>
+      <div>
+        <label for="atproto-password-input">App password</label>
+        <input type="password" id="atproto-password-input" placeholder="xxxx-xxxx-xxxx-xxxx" autocomplete="current-password">
+      </div>
+      <div>
+        <label for="atproto-service-input">Service URL (advanced)</label>
+        <input type="url" id="atproto-service-input" placeholder="https://bsky.social">
+      </div>
+      <button class="btn-primary" id="atproto-signin-btn">Sign in</button>
+      <div id="atproto-status"></div>
+    </div>
+    <div id="atproto-signed-in" hidden>
+      <p>Signed in as <strong id="atproto-handle-display"></strong></p>
+      <button class="btn-small btn-danger" id="atproto-signout-btn">Sign out</button>
+    </div>
+  </section>
+
   <!-- Import -->
   <section id="import-section">
     <button class="btn-primary" id="import-btn">Import This Page</button>

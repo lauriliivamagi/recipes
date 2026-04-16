@@ -120,6 +120,9 @@ importers:
       '@ai-sdk/openai':
         specifier: ^3.0.51
         version: 3.0.52(zod@4.3.6)
+      '@recipe/atproto':
+        specifier: workspace:*
+        version: link:../atproto
       '@recipe/domain':
         specifier: workspace:*
         version: link:../domain
@@ -163,6 +166,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@atproto/api':
+        specifier: ^0.19.9
+        version: 0.19.9
       '@lit/context':
         specifier: ^1.1.6
         version: 1.1.6

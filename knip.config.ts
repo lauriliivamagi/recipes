@@ -11,7 +11,7 @@ const config: KnipConfig = {
       project: ['src/**/*.ts'],
     },
     'packages/ui': {
-      entry: ['entries/catalog.ts', 'entries/recipe.ts', 'entries/auth-callback.ts'],
+      entry: ['entries/catalog.ts', 'entries/pds-recipe.ts', 'entries/auth-callback.ts'],
       project: ['src/**/*.ts', 'entries/**/*.ts'],
     },
     'packages/build': {

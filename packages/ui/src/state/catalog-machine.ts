@@ -20,7 +20,8 @@ export interface CatalogContext {
 export type CatalogEvent =
   | { type: 'SEARCH'; query: string }
   | { type: 'TAG_TOGGLE'; tag: string }
-  | { type: 'CLEAR_FILTERS' };
+  | { type: 'CLEAR_FILTERS' }
+  | { type: 'SET_RECIPES'; recipes: CatalogRecipe[] };
 
 // ---------------------------------------------------------------------------
 // Input
@@ -79,6 +80,16 @@ export const catalogMachine = setup({
       activeTags: () => [] as string[],
       filteredRecipes: ({ context }) => computeFiltered(context.recipes, '', []),
     }),
+
+    setRecipes: assign({
+      recipes: ({ event }) => (event as { recipes: CatalogRecipe[] }).recipes,
+      filteredRecipes: ({ event, context }) =>
+        computeFiltered(
+          (event as { recipes: CatalogRecipe[] }).recipes,
+          context.query,
+          context.activeTags,
+        ),
+    }),
   },
 }).createMachine({
   id: 'catalog',
@@ -103,6 +114,9 @@ export const catalogMachine = setup({
           actions: ['toggleTag', 'applyFilters'],
           target: 'filtered',
         },
+        SET_RECIPES: {
+          actions: 'setRecipes',
+        },
       },
     },
 
@@ -117,6 +131,9 @@ export const catalogMachine = setup({
         TAG_TOGGLE: {
           actions: ['toggleTag', 'applyFilters'],
           target: 'filtered',
+        },
+        SET_RECIPES: {
+          actions: 'setRecipes',
         },
       },
       after: {
@@ -139,6 +156,9 @@ export const catalogMachine = setup({
         CLEAR_FILTERS: {
           actions: 'clearAllFilters',
           target: 'idle',
+        },
+        SET_RECIPES: {
+          actions: 'setRecipes',
         },
       },
     },

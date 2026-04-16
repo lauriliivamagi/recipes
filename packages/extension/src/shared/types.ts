@@ -33,3 +33,13 @@ export interface StoredRecipe {
    */
   atprotoRkey?: string;
 }
+
+/** Persisted ATproto session (app-password based) in chrome.storage.local. */
+export interface AtprotoSession {
+  service: string;
+  did: string;
+  handle: string;
+  accessJwt: string;
+  refreshJwt: string;
+  active: boolean;
+}

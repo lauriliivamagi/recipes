@@ -10,4 +10,10 @@ export interface CatalogRecipe {
   servings: number;
   language: string;
   url: string;
+  /** Origin DID when the recipe is backed by a PDS record. */
+  did?: string;
+  /** Record key when the recipe is backed by a PDS record. */
+  rkey?: string;
+  /** 'pds' for records fetched from a PDS; absent for legacy static-built recipes. */
+  source?: 'pds';
 }
