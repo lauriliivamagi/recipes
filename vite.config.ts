@@ -42,6 +42,13 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg}'],
         navigateFallback: 'offline.html',
+        // OAuth callback URL arrives without trailing slash (from PDS redirect)
+        // and carries the authorization code in the URL fragment. Without this
+        // denylist, Workbox's NavigationRoute serves offline.html because
+        // /auth/callback doesn't match the precached /auth/callback/index.html.
+        // Skipping the fallback lets GitHub Pages 301 to the trailing-slash
+        // form, preserving the fragment; the SW then serves that from cache.
+        navigateFallbackDenylist: [/^\/auth\/callback/],
         // When the catalog grows beyond ~50 recipes, consider moving recipe HTML
         // out of globPatterns precache and into runtimeCaching with
         // StaleWhileRevalidate for navigation requests (#13 in review).
