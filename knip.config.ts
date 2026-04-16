@@ -11,10 +11,13 @@ const config: KnipConfig = {
       project: ['src/**/*.ts'],
     },
     'packages/ui': {
-      entry: ['entries/catalog.ts', 'entries/recipe.ts'],
+      entry: ['entries/catalog.ts', 'entries/recipe.ts', 'entries/auth-callback.ts'],
       project: ['src/**/*.ts', 'entries/**/*.ts'],
     },
     'packages/build': {
+      project: ['src/**/*.ts'],
+    },
+    'packages/atproto': {
       project: ['src/**/*.ts'],
     },
     'packages/extension': {
