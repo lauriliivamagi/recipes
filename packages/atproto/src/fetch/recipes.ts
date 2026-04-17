@@ -1,5 +1,6 @@
 import type { Agent } from '@atproto/api';
 import type { Recipe } from '@recipe/domain';
+import { parseRecipe } from '@recipe/domain';
 import { lexiconToRecipe } from '../adapter/recipe.js';
 import { SOCIAL_HOB_TEMP_RECIPE_NSID } from '../constants.js';
 import type * as Lex from '../generated/types/social/hob/temp/recipe.js';
@@ -57,7 +58,7 @@ export async function fetchRecipes(
   const recipes: FetchedRecipe[] = res.data.records.map((rec) => {
     const rkey = rkeyFromUri(rec.uri);
     try {
-      const recipe = lexiconToRecipe(rec.value as Lex.Record);
+      const recipe = validateFetchedRecord(rec.value);
       return { rkey, uri: rec.uri, cid: rec.cid, recipe };
     } catch (err) {
       return {
@@ -88,13 +89,26 @@ export async function fetchRecipe(
     collection: SOCIAL_HOB_TEMP_RECIPE_NSID,
     rkey,
   });
-  const recipe = lexiconToRecipe(res.data.value as Lex.Record);
+  const recipe = validateFetchedRecord(res.data.value);
   return {
     rkey,
     uri: res.data.uri,
     cid: res.data.cid ?? '',
     recipe,
   };
+}
+
+/**
+ * Convert a lexicon record into a Recipe, then re-run the full domain schema
+ * + DAG validation. PDS records come from arbitrary servers and must satisfy
+ * every invariant the local build pipeline enforces before reaching UI state.
+ */
+function validateFetchedRecord(value: unknown): Recipe {
+  const recipe = lexiconToRecipe(value as Lex.Record);
+  // `parseRecipe` expects raw JSON (pre-branding). Round-trip through JSON to
+  // strip the branded types, then let parseRecipe re-apply them and run DAG
+  // validation.
+  return parseRecipe(JSON.parse(JSON.stringify(recipe)));
 }
 
 export interface FetchAllRecipesOptions {

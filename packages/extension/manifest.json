@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Hob",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Import recipes from any webpage into Hob",
   "permissions": ["activeTab", "storage", "scripting", "downloads"],
   "host_permissions": [

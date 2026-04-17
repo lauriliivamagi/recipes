@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Agent } from '@atproto/api';
 import type { Recipe, RecipeSlug } from '@recipe/domain';
+import {
+  ing,
+  op,
+  secs,
+} from '@recipe/domain/recipe/test-helpers.js';
 import { recipeToLexicon } from '../adapter/recipe.js';
 import {
   fetchAllRecipes,
@@ -24,9 +29,18 @@ function makeRecipe(slug: string, title: string): Recipe {
       },
       difficulty: 'easy',
     },
-    ingredients: [],
+    ingredients: [ing('salt', 'Salt', 1, 'g', 'seasoning')],
     equipment: [],
-    operations: [],
+    operations: [
+      op({
+        id: 'season',
+        type: 'prep',
+        action: 'season',
+        ingredients: ['salt'],
+        time: secs(30),
+        activeTime: secs(30),
+      }),
+    ],
     subProducts: [],
   } as unknown as Recipe;
 }
@@ -98,6 +112,23 @@ describe('fetchRecipes', () => {
     expect(page.recipes).toHaveLength(2);
     expect('recipe' in page.recipes[0]!).toBe(true);
     expect('invalid' in page.recipes[1]!).toBe(true);
+  });
+
+  it('rejects records that fail DAG validation (dangling operation reference)', async () => {
+    const bad = makeRecipe('bad', 'Bad');
+    // Introduce a dangling depends reference. The lexicon record is
+    // structurally fine but the DAG is invalid.
+    const lex = lexRecord(bad) as {
+      operations: Array<{ depends: string[] }>;
+    };
+    lex.operations[0]!.depends = ['does-not-exist'];
+    const { agent } = mockAgent({
+      records: [{ uri: 'at://x/c/bad', cid: 'bafy', value: lex }],
+    });
+
+    const page = await fetchRecipes(agent, 'did:plc:x');
+    expect(page.recipes).toHaveLength(1);
+    expect('invalid' in page.recipes[0]!).toBe(true);
   });
 
   it('passes cursor, limit, reverse to listRecords', async () => {

@@ -78,6 +78,11 @@ export class PdsRecipeShell extends LitElement {
       return;
     }
 
+    if (!DID_AUTHORITY_REGEX.test(did) || !RKEY_REGEX.test(rkey)) {
+      this._state = { kind: 'error', reason: 'Invalid did/rkey in URL' };
+      return;
+    }
+
     try {
       const agent = await this._resolveAgent(did);
       const fetched: FetchedRecipeOk = await fetchRecipe(agent, did, rkey);
@@ -145,10 +150,15 @@ export class PdsRecipeShell extends LitElement {
   }
 }
 
-const AT_URI_REGEX = /^at:\/\/([^/]+)\/[^/]+\/(.+)$/;
+// Strict authority/rkey charset to prevent smuggling path traversal or
+// scheme-switching payloads through the DID or rkey.
+const DID_AUTHORITY_REGEX = /^did:(?:plc|web):[A-Za-z0-9._%:-]+$/;
+const RKEY_REGEX = /^[A-Za-z0-9._:~-]+$/;
+const AT_URI_REGEX =
+  /^at:\/\/(did:(?:plc|web):[A-Za-z0-9._%:-]+)\/[A-Za-z0-9.-]+\/([A-Za-z0-9._:~-]+)$/;
 
 function parseAtUri(uri: string): { did: string; rkey: string } | null {
-  const match = AT_URI_REGEX.exec(uri);
+  const match = uri.match(AT_URI_REGEX);
   if (!match) return null;
   return { did: match[1]!, rkey: match[2]! };
 }

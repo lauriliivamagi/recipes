@@ -28,6 +28,8 @@ jobs:
       - run: pnpm install
       - run: pnpm typecheck
       - run: pnpm test
+      - name: Audit dependencies for high/critical CVEs
+        run: pnpm audit --prod --audit-level=high
 
   deploy:
     needs: test
