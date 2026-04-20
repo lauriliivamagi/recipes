@@ -6,7 +6,7 @@ This file defines how Hob speaks. Every micro-copy decision — labels, progress
 
 ## Core stance
 
-Hob is a calm friend in the kitchen: present, specific, and unremarkable. It speaks at the user's hardest moment — 6pm, depleted, possibly ashamed of not having cooked yet — without naming that hardness. It is not clinical (no diagnoses), not chirpy (no exclamation-point praise), and not coachy (no instructions about how the user should feel or behave). It delivers the next fact the user needs and gets out of the way.
+Hob is a calm presence in the kitchen: specific, useful, and unremarkable. It delivers the next fact the user needs and gets out of the way. It does not evaluate, remind, encourage, or diagnose. It does not know what kind of day the user had. It is not clinical, not chirpy, and not coachy.
 
 ---
 
@@ -42,10 +42,10 @@ Hob is a calm friend in the kitchen: present, specific, and unremarkable. It spe
 
 ## Tone qualities
 
-- **Quiet** — the app informs only when value is delivered. It does not cheer, remind, or prompt unless there is a specific fact the user needs right now.
+- **Quiet** — the app informs only when value is delivered. It does not cheer, remind, or prompt unless there is a specific fact the user needs right now. The cooking view has no celebration between steps. The timer fires; the next step appears.
 - **Warm** — acknowledges effort indirectly through specificity ("sauce is building" signals the app is paying attention) without saccharine affirmation.
 - **Specific** — "29:45 left on the simmer" beats "almost done". "Step 6 of 12" beats "you're doing great". Numbers and states are more useful than evaluations.
-- **Trustworthy** — the app does what it said it would do at the moment it said it would do it. Timer fires when the step ends. List contains exactly what the recipe needs. Trust is built through accuracy, not warmth.
+- **Trustworthy** — timer fires when the step ends. List contains what the recipe needs. Trust is built through accuracy, not warmth.
 - **Permissive** — "not tonight" is a valid answer. Zombie mode is a valid cooking mode. Takeout night is a valid plan entry. The app never implies a right answer.
 
 ---
@@ -63,11 +63,13 @@ Progress copy is present-tense, factual, and glance-readable. It describes the s
 
 The completion state acknowledges the meal, not the user: "Spaghetti bolognese done." — not "You did it!"
 
+The completion state may optionally surface a reentry point — "Lasagne next?" if it's in the pool — but never a performance review.
+
 ---
 
 ## Handoff voice
 
-When Hob passes work to another person (partner, shopper), it does not apologize for the handoff or thank the recipient for helping. The web checklist opens to "Shopping list" — not "Thanks for helping!" or "Here's what [name] needs." The shopper does not need to know why this list exists or that an ecosystem surrounds it. Instructions are minimal and direct: aisle headers, item names, recipe context on tap.
+When Hob passes work to another person (partner, shopper), it does not apologize for the handoff or thank the recipient for helping. The web checklist opens to "Shopping list" — not "Thanks for helping!" or "Here's what [name] needs." The shopper does not need context about the app or the planner. The list is the product. Instructions are minimal and direct: aisle headers, item names, recipe context on tap.
 
 ---
 
@@ -80,6 +82,10 @@ When Hob passes work to another person (partner, shopper), it does not apologize
 **Cooking view** — Present-tense, factual, glance-readable. Step counter and timer are the primary communication channel. No cheerleading between steps.
 
 **Pool planner** — Meals that haven't been cooked are "remaining." No urgency language except perishable sorting ("fish first — use within 2 days"). Days are never assigned by default, so nothing can be "late."
+
+On reopen after absence: the pool shows as-is with no banner, no count of skipped nights, no "you haven't cooked since [date]." Perishable sorting updates silently. If the pool is empty, "What sounds good tonight?" — not "Your pool is empty."
+
+**Low-energy / Zombie mode** — Permission-giving, never apologetic. "Five decisions or fewer." "Scrambled eggs counts." The copy validates minimal cooking as real cooking. It does not explain why the mode exists or imply the user should feel good about using it.
 
 **Web checklist (shopper)** — Instructional and minimal. The shopper has one job. Headers are aisle names. Items are ingredient names. Context appears only on tap. No branding beyond the page title. The shopper does not need to know Hob exists.
 
