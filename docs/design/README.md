@@ -14,12 +14,21 @@ _template/    # Templates new surfaces are scaffolded from
 <surface>/    # One folder per IA surface (see Sequencing below)
 ```
 
-Each surface folder contains:
+Each surface folder contains the following — note the distinction between artifacts created at scaffolding time and artifacts written after the Claude Design session:
+
+**Scaffolded up front (before any Claude Design work):**
 
 - `brief.md` — the Claude Design starting prompt
 - `inputs/` — files attached to the Claude Design project (persona excerpt, journey moment, curated scenarios, optional wireframe reference)
-- `outputs/` — what comes back: share link, screenshots, handoff bundle, chat excerpts
-- `decisions.md` — what was kept, discarded, why; kernel feedback
+- `outputs/` — empty subfolders (`screenshots/`, `handoff/`) ready to receive captured artifacts
+
+**Written after the Claude Design session:**
+
+- `outputs/share-link.md` — Claude Design project URL + last-updated timestamp
+- `outputs/screenshots/<NN>-<state>.png` and `outputs/screenshots/manifest.md`
+- `outputs/handoff/` — raw handoff bundle from Claude Design's "Handoff to Claude Code" export
+- `outputs/chat-excerpts.md` — quoted decisions worth remembering
+- `decisions.md` — what was kept, discarded, kernel feedback
 
 ## Workflow (per surface)
 
@@ -27,10 +36,9 @@ Each surface folder contains:
 2. Human reviews the brief. Approved or revised.
 3. AI opens a Claude Design project, pastes the brief, attaches inputs, iterates.
 4. AI exports the result back to `<surface>/outputs/` and writes `decisions.md`.
-5. Human reviews the design.
-6. Implementation pass (separate plan): handoff bundle integrated into `/site/`.
-
-The kernel evolves: each `decisions.md` may flag changes to `_kernel/` files. Apply those before starting the next surface.
+5. If `decisions.md` flags kernel feedback, update the relevant `_kernel/` file and add a row to [`_kernel/CHANGES.md`](_kernel/CHANGES.md) before starting the next surface.
+6. Human reviews the design.
+7. Implementation pass (separate plan): handoff bundle integrated into `/site/`.
 
 ## Sequencing
 

@@ -21,9 +21,9 @@ Full journey context: see `inputs/journey-moment.md` (Journey 6 — "6pm Decisio
 
 The surface must handle every state below. Design each.
 
-- **No pool, no theme set** — first-time-user state. The suggestion section may not appear at all, or may appear with a different fallback (designer to decide and justify).
+- **No pool, no theme set** — first-time-user state. The suggestion section does not render. The catalog appears as it does today (search + tag filter + recipe grid). The suggestion engine is invisible until the user adds at least one meal to their pool.
 - **Pool active, 3+ matching meals** — primary state. Three suggestion chips, energy filter visible.
-- **Pool active, fewer than 3 matches** — fewer chips, no padding, no full-catalog fallback.
+- **Pool active, fewer than 3 matches** — falls through to the "No suggestions possible" empty state below. The pattern is exactly-3-or-empty (per `_kernel/micro-interactions.md` Suggestion chip pattern); never partial.
 - **All 3 dismissed (`Not these`)** — three new chips slide in. Track dismissed across the session.
 - **Theme night active** — chips filtered by today's cuisine theme.
 - **Zombie mode** — accessed via "Not tonight" → "Really low energy?" path. Curated subset, 3 options, even simpler.
