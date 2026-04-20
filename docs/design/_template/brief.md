@@ -15,7 +15,7 @@ The accompanying inputs/ folder holds attachments for Claude Design.
 <!--
 The 1-2 personas this surface primarily serves (not all 4).
 Link to docs/strategy/personas.md sections, don't paste here.
-The persona-excerpt.md in inputs/ holds the curated excerpt for Claude Design.
+Curate a 1-2-paragraph excerpt into inputs/persona-excerpt.md for Claude Design attachment.
 -->
 
 ## The user moment
@@ -23,7 +23,7 @@ The persona-excerpt.md in inputs/ holds the curated excerpt for Claude Design.
 <!--
 The journey beat this surface owns.
 Link to the relevant docs/strategy/journey-maps.md row(s).
-The journey-moment.md in inputs/ holds the curated excerpt for Claude Design.
+Curate a 1-2-paragraph excerpt into inputs/journey-moment.md for Claude Design attachment.
 -->
 
 ## Behavior to design (state matrix)
@@ -43,7 +43,7 @@ Common categories:
 <!--
 Quote (or link) the EARS rules and Gherkin scenarios from docs/scenarios/<domain>/.
 Don't restate — quote the source.
-The scenarios.md in inputs/ holds the curated subset for Claude Design.
+Curate the relevant subset into inputs/scenarios.md for Claude Design attachment.
 -->
 
 ## Constraints
