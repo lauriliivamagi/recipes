@@ -87,6 +87,8 @@ On reopen after absence: the pool shows as-is with no banner, no count of skippe
 
 **Low-energy / Zombie mode** — Permission-giving, never apologetic. "Five decisions or fewer." "Scrambled eggs counts." The copy validates minimal cooking as real cooking. It does not explain why the mode exists or imply the user should feel good about using it.
 
+The transition into zombie mode is a **prompt, not a screen** — one short line appears inline where the suggestion chips were: "Really low energy? Here are meals with 5 or fewer decisions." The 3 zombie chips appear below that prompt, still on the hub. No page navigation, no modal, no "Entering zombie mode" affordance. The prompt is the register; the chips follow.
+
 **Web checklist (shopper)** — Instructional and minimal. The shopper has one job. Headers are aisle names. Items are ingredient names. Context appears only on tap. No branding beyond the page title. The shopper does not need to know Hob exists.
 
 **Empty states and absence** — Never accusatory. "What sounds good tonight?" not "You haven't planned." On reopen after absence: show the catalog or pool as-is — no banners, no summaries of what was skipped, no welcome-back messaging. The app was waiting, not counting.

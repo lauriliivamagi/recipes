@@ -18,7 +18,7 @@ Color, typography, spacing, and motion stated as intent. Concrete values are for
 
 ## Spacing intent
 
-- **Generous touch targets.** Kitchen use: occasional misses with a knuckle or a fingertip. Minimum 44px equivalent; cooking view targets larger.
+- **Generous touch targets.** Kitchen use: occasional misses with a knuckle or a fingertip. Minimum 44px equivalent for any tappable element, including chips, pills, and icon buttons — not just primary CTAs. Cooking-view targets are larger still.
 - **Breathing room over density.** Catalog and overview can be dense; cooking and suggestion screens must not be.
 - **One-handed phone use respected.** Critical actions (next step, dismiss, start timer) reachable with thumb.
 

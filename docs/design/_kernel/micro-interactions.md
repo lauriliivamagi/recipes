@@ -69,7 +69,7 @@ Source material: this file synthesizes patterns documented behaviorally in [docs
 - The bar appears as soon as any timer starts and is present on every subsequent step as long as at least one timer is running.
 - Each pill's countdown updates every second.
 - When a timer reaches zero, its pill transitions to the "Done!" state; it does not disappear until the alarm is acknowledged.
-- Tapping a pill navigates to the step that owns that timer. (This behavior is documented as an open question in the scenarios; treat as intended behavior unless explicitly reversed.)
+- Tapping a pill navigates to the step that owns that timer. This is required behavior, not optional: the cooking-view feedback loop depends on being able to return to a running timer's source step from wherever the user is in the step sequence.
 - The bar clears automatically when the last active timer is dismissed.
 - In multi-recipe mode, pills are labeled by recipe name to distinguish concurrent timers across recipes.
 - Updates are instant under reduced motion — no animation on pill updates.
@@ -113,11 +113,11 @@ Source material: this file synthesizes patterns documented behaviorally in [docs
 - The timer starts only on explicit user action; it never starts automatically.
 - While running, the display updates every second.
 - When the user pauses, the countdown halts and resumes exactly where it stopped.
-- When the countdown reaches zero, an audio alarm plays.
+- When the countdown reaches zero, an **audio alarm** plays. Audio is the primary signal and is non-negotiable: the timer is a safety feature (Journey 1's scorched-sauce failure) and relies on audio to reach a cook who has walked away from the phone. The visual "done" state reinforces the audio; it does not replace it.
 - The alarm continues until the user explicitly dismisses it.
 - After zero, overshoot time is displayed in +M:SS format (e.g., "+1:00", "+5:30") so the cook knows how far past the target they are.
 - When two or more timers expire within 30 seconds of each other, their alarms are staggered — not overlaid simultaneously.
-- If audio playback is blocked (browser permission denied, silent mode, or hardware restriction), the system displays a persistent visual alarm that remains until dismissed.
+- If audio playback is blocked (browser permission denied, silent mode, or hardware restriction), the system displays a persistent visual alarm that remains until dismissed. This is a fallback for a degraded environment; it is not the default.
 - The timer survives navigating between steps within the session; it continues running in the background using a Web Worker.
 - If the browser tab goes to the background or the screen locks, the timer reconciles elapsed real time on return so remaining time stays accurate.
 - If the page is refreshed during a running timer, the timer resumes with correct remaining time based on real elapsed time.
@@ -187,15 +187,19 @@ Source material: this file synthesizes patterns documented behaviorally in [docs
 - `empty` — no recipes match the active filters; graceful empty state shown; full catalog is never used as fallback
 - `filled` — exactly 3 suggestion chips are displayed
 - `all-dismissed` — user has tapped "Not these"; the 3 chips are replaced with 3 new options; dismissed recipes do not reappear in the replacement set
+- `zombie-prompt` — user has tapped "Not tonight"; a single permission-giving line appears inline ("Really low energy? Here are meals with 5 or fewer decisions.") with no chips yet. This is a distinct intermediate state, not a filter change.
+- `zombie-chips` — after `zombie-prompt`, exactly 3 curated zombie-tier recipes appear. These are a curated set, not a filter result on the existing pool.
 
 **Behavior.**
 - The suggestion screen always shows exactly 3 options or a graceful empty state. The full catalog is never shown as a fallback.
 - Tapping a chip navigates directly to that recipe's overview.
 - Tapping "Not these" replaces all 3 chips with 3 new options drawn from the catalog, excluding the dismissed set. No commentary or judgment language accompanies the replacement.
-- Tapping "Not tonight" exits to the zombie-mode prompt ("Really low energy? Here are meals with 5 or fewer decisions.") and surfaces 3 zombie-tier recipes. Pool-sourced zombie recipes appear before catalog ones.
-- Tapping "Not even this tonight" from zombie mode returns the user to the catalog hub with no guilt language and the pool unchanged.
-- Suggestions are filtered by the active energy tier and time limit; when the user changes filters, the 3 chips update to match.
-- Zombie-tier chips navigate directly to cooking view in Relaxed mode with no mode-selection prompt.
+- Tapping "Not tonight" enters a **two-step zombie flow**, not a filter switch:
+  1. `zombie-prompt` — the suggestion area replaces its 3 chips with one inline permission-giving line: "Really low energy? Here are meals with 5 or fewer decisions." No chips yet. Copy register is defined in `brand-voice.md` > "Low-energy / Zombie mode".
+  2. `zombie-chips` — after a brief beat (immediate is acceptable), exactly 3 curated zombie-tier recipes appear. Pool-sourced zombie recipes appear before catalog ones. The zombie set is curated (per `docs/scenarios/decide/zombie-mode.md`), not the result of applying `tier = "zombie"` as a filter.
+- Tapping "Not even this tonight" from `zombie-chips` returns the user to the catalog hub with no guilt language and the pool unchanged.
+- Suggestions in `filled` state are filtered by the active energy tier and time limit; when the user changes filters, the 3 chips update to match.
+- Zombie-tier chips (from `zombie-chips`) navigate directly to cooking view in Relaxed mode with no mode-selection prompt.
 
 **Accessibility.**
 - Keyboard: each chip is a button and is individually focusable and activatable; "Not these" and "Not tonight" are also keyboard-operable.
